@@ -40,7 +40,6 @@
       background: var(--tg-theme-secondary-bg-color, #f0f0f0);
       color: var(--tg-theme-text-color, #000);
     }
-    .btn-danger { background: #e74c3c; color: #fff; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .home-container { padding: 24px 16px; }
     .home-hello { margin-bottom: 24px; font-size: 15px; color: var(--tg-theme-hint-color, #888); }
@@ -104,7 +103,6 @@
 </head>
 <body>
 
-<!-- ============ HOME SCREEN ============ -->
 <div class="screen active" id="screen-home">
   <div class="home-container">
     <div class="home-hello">Hello, <strong id="userName">...</strong> 👋</div>
@@ -113,7 +111,6 @@
   </div>
 </div>
 
-<!-- ============ PRODUCTS LIST SCREEN ============ -->
 <div class="screen" id="screen-products">
   <div class="header">
     <button class="back-btn" onclick="showScreen('home')">← Back</button>
@@ -126,14 +123,12 @@
   <div class="product-list" id="productList"></div>
 </div>
 
-<!-- ============ NEW DELIVERY SCREEN ============ -->
 <div class="screen" id="screen-newDelivery">
   <div class="header">
     <button class="back-btn" onclick="confirmBackHome()">← Back</button>
     <h1>📦 New Delivery</h1>
   </div>
   <div class="form-container">
-    <!-- Product picker area -->
     <div id="productPickerArea">
       <div class="form-group">
         <label class="form-label">Select Product</label>
@@ -142,7 +137,6 @@
       <div id="deliverySearchResults" class="product-list" style="padding: 0; max-height: 200px; overflow-y: auto;"></div>
     </div>
 
-    <!-- Item form (appears after product is picked) -->
     <div id="itemForm" style="display: none;">
       <div class="selected-product">
         <div class="product-id" id="selectedProductId"></div>
@@ -157,12 +151,17 @@
 
       <div class="form-group">
         <label class="form-label">Quantity</label>
-        <input type="number" class="form-input" id="itemQuantity" min="0.1" step="0.1" placeholder="e.g. 3">
+        <input type="number" class="form-input" id="itemQuantity" min="1" step="1" placeholder="e.g. 3">
       </div>
 
       <div class="form-group">
-        <label class="form-label">Unit (optional)</label>
-        <input type="text" class="form-input" id="itemUnit" placeholder="e.g. bottle, kg, pcs">
+        <label class="form-label">Unit</label>
+        <select class="form-select" id="itemUnit">
+          <option value="">Select unit...</option>
+          <option value="box">Box</option>
+          <option value="pack">Pack</option>
+          <option value="piece">Piece</option>
+        </select>
       </div>
 
       <div class="form-group">
@@ -173,7 +172,6 @@
       <button class="btn" onclick="addItemToDelivery()">+ Add to Delivery</button>
     </div>
 
-    <!-- Items list -->
     <div class="items-list" id="itemsListContainer" style="display: none;">
       <div class="items-header">Items in this delivery (<span id="itemsCount">0</span>)</div>
       <div id="itemsList"></div>
@@ -193,6 +191,8 @@
   const user = tg.initDataUnsafe.user;
   const userId = user ? user.id : null;
   const userFirstName = user ? user.first_name : 'User';
+  const userLastName = user ? (user.last_name || '') : '';
+  const userFullName = (userFirstName + ' ' + userLastName).trim();
   
   document.getElementById('userName').textContent = userFirstName;
   
@@ -201,7 +201,6 @@
   let pickedProduct = null;
   let deliveryItems = [];
   
-  // ========== NAVIGATION ==========
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + name).classList.add('active');
@@ -222,7 +221,6 @@
     showScreen('home');
   }
   
-  // ========== DATA LOADING ==========
   async function loadProducts() {
     try {
       const r = await fetch(API_URL + '?action=getProducts');
@@ -247,7 +245,6 @@
     }
   }
   
-  // ========== PRODUCTS SCREEN ==========
   function renderProductList(products) {
     document.getElementById('productCount').textContent = products.length + ' products';
     const html = products.map(p => `
@@ -265,7 +262,6 @@
     renderProductList(filtered);
   });
   
-  // ========== NEW DELIVERY — PRODUCT PICKER ==========
   document.getElementById('deliverySearch').addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
     const results = document.getElementById('deliverySearchResults');
@@ -286,7 +282,6 @@
     document.getElementById('itemForm').style.display = 'block';
     document.getElementById('selectedProductId').textContent = pickedProduct.product_id;
     document.getElementById('selectedProductName').textContent = pickedProduct.name;
-    if (pickedProduct.default_unit) document.getElementById('itemUnit').value = pickedProduct.default_unit;
   }
   
   function resetItemForm() {
@@ -301,16 +296,16 @@
     document.getElementById('locationSelect').value = '';
   }
   
-  // ========== ADD ITEM TO DELIVERY ==========
   function addItemToDelivery() {
     const locationId = document.getElementById('locationSelect').value;
-    const quantity = parseFloat(document.getElementById('itemQuantity').value);
-    const unit = document.getElementById('itemUnit').value.trim();
+    const quantity = parseInt(document.getElementById('itemQuantity').value);
+    const unit = document.getElementById('itemUnit').value;
     const expiry = document.getElementById('itemExpiry').value;
     
     if (!pickedProduct) return showToast('Pick a product first');
     if (!locationId) return showToast('Select a location');
     if (!quantity || quantity <= 0) return showToast('Enter valid quantity');
+    if (!unit) return showToast('Select a unit');
     if (!expiry) return showToast('Enter expiry date');
     
     const locationName = (allLocations.find(l => l.location_id === locationId) || {}).name || locationId;
@@ -343,14 +338,13 @@
       <div class="item-chip">
         <div class="item-chip-info">
           <div>${escapeHtml(item.product_name)}</div>
-          <div class="item-chip-meta">${item.quantity} ${item.unit || ''} · ${escapeHtml(item.location_name)} · exp ${item.expiry_date}</div>
+          <div class="item-chip-meta">${item.quantity} ${item.unit} · ${escapeHtml(item.location_name)} · exp ${item.expiry_date}</div>
         </div>
         <button class="item-remove" onclick="removeItem(${i})">✕</button>
       </div>
     `).join('');
   }
   
-  // ========== SUBMIT ==========
   async function submitDelivery() {
     if (deliveryItems.length === 0) return showToast('No items');
     const btn = document.getElementById('submitBtn');
@@ -362,6 +356,7 @@
         body: JSON.stringify({
           action: 'submitDelivery',
           userId: userId,
+          userName: userFullName,
           items: deliveryItems.map(i => ({
             product_id: i.product_id, location_id: i.location_id,
             quantity: i.quantity, unit: i.unit, expiry_date: i.expiry_date
@@ -383,7 +378,6 @@
     }
   }
   
-  // ========== UTILS ==========
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
