@@ -11,141 +11,388 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--tg-theme-bg-color, #ffffff);
       color: var(--tg-theme-text-color, #000000);
-      padding: 0;
-      margin: 0;
+      padding: 0; margin: 0;
     }
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: block; }
     .header {
       padding: 16px;
       border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
-      position: sticky;
-      top: 0;
+      position: sticky; top: 0;
       background: var(--tg-theme-bg-color, #ffffff);
       z-index: 10;
+      display: flex; align-items: center; gap: 12px;
     }
-    h1 {
-      font-size: 20px;
-      margin: 0 0 12px 0;
+    .back-btn {
+      background: none; border: none; color: var(--tg-theme-link-color, #2481cc);
+      font-size: 16px; cursor: pointer; padding: 4px 8px;
     }
-    .search-box {
-      width: 100%;
-      padding: 12px 16px;
-      font-size: 16px;
-      border: 1px solid var(--tg-theme-hint-color, #ccc);
-      border-radius: 10px;
-      background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+    h1 { font-size: 20px; margin: 0; flex: 1; }
+    .btn {
+      display: block; width: 100%; padding: 16px;
+      font-size: 16px; font-weight: 500;
+      border: none; border-radius: 12px; cursor: pointer;
+      background: var(--tg-theme-button-color, #2481cc);
+      color: var(--tg-theme-button-text-color, #ffffff);
+      margin-bottom: 12px;
+    }
+    .btn-secondary {
+      background: var(--tg-theme-secondary-bg-color, #f0f0f0);
       color: var(--tg-theme-text-color, #000);
-      outline: none;
     }
-    .search-box:focus {
-      border-color: var(--tg-theme-button-color, #2481cc);
-    }
-    .status {
-      padding: 16px;
-      text-align: center;
-      color: var(--tg-theme-hint-color, #888);
-      font-size: 14px;
-    }
-    .product-list {
-      padding: 8px 16px 32px;
-    }
-    .product-item {
-      padding: 14px 12px;
-      border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
-      font-size: 15px;
-    }
-    .product-id {
-      font-size: 11px;
-      color: var(--tg-theme-hint-color, #888);
-      margin-bottom: 2px;
-      font-family: monospace;
-    }
-    .product-name {
-      font-weight: 500;
+    .btn-danger { background: #e74c3c; color: #fff; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .home-container { padding: 24px 16px; }
+    .home-hello { margin-bottom: 24px; font-size: 15px; color: var(--tg-theme-hint-color, #888); }
+    .home-hello strong { color: var(--tg-theme-text-color, #000); font-weight: 600; }
+    .search-box {
+      width: 100%; padding: 12px 16px; font-size: 16px;
+      border: 1px solid var(--tg-theme-hint-color, #ccc); border-radius: 10px;
+      background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+      color: var(--tg-theme-text-color, #000); outline: none;
     }
     .count-info {
-      padding: 8px 16px;
-      font-size: 13px;
+      padding: 8px 16px; font-size: 13px;
       color: var(--tg-theme-hint-color, #888);
       background: var(--tg-theme-secondary-bg-color, #f5f5f5);
     }
+    .product-list { padding: 8px 16px 32px; }
+    .product-item {
+      padding: 14px 12px; border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
+      cursor: pointer;
+    }
+    .product-id { font-size: 11px; color: var(--tg-theme-hint-color, #888); margin-bottom: 2px; font-family: monospace; }
+    .product-name { font-weight: 500; font-size: 15px; }
+    .form-container { padding: 16px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; color: var(--tg-theme-hint-color, #888); margin-bottom: 6px; }
+    .form-input, .form-select {
+      width: 100%; padding: 12px; font-size: 16px;
+      border: 1px solid var(--tg-theme-hint-color, #ccc); border-radius: 8px;
+      background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000);
+    }
+    .selected-product {
+      padding: 12px; border-radius: 8px; margin-bottom: 16px;
+      background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    }
+    .change-link { color: var(--tg-theme-link-color, #2481cc); font-size: 13px; cursor: pointer; }
+    .items-list {
+      margin-top: 16px; padding-top: 16px;
+      border-top: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
+    }
+    .items-header { font-weight: 600; margin-bottom: 12px; font-size: 15px; }
+    .item-chip {
+      padding: 12px; background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+      border-radius: 8px; margin-bottom: 8px; display: flex;
+      align-items: center; justify-content: space-between;
+    }
+    .item-chip-info { font-size: 14px; flex: 1; }
+    .item-chip-meta { font-size: 12px; color: var(--tg-theme-hint-color, #888); }
+    .item-remove {
+      background: none; border: none; color: #e74c3c;
+      font-size: 20px; cursor: pointer; padding: 0 8px;
+    }
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #888); }
+    .toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      padding: 12px 24px; background: #333; color: #fff;
+      border-radius: 20px; font-size: 14px; opacity: 0;
+      transition: opacity 0.3s; z-index: 1000;
+    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>📦 Products Catalog</h1>
-    <input type="text" class="search-box" id="search" placeholder="Search product...">
-  </div>
-  
-  <div class="count-info" id="countInfo">Loading products...</div>
-  <div class="product-list" id="productList"></div>
 
-  <script>
-    // ⚠️ REPLACE THIS WITH YOUR API URL
-    const API_URL = 'https://script.google.com/macros/s/AKfycbwhj6lHg84JLxQl41hB4luCFwn6zMP8cw9Azm8b4WjSmm0EQFzjYheEVZl69-HkO804bQ/exec';
-    
-    const tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
-    
-    let allProducts = [];
-    
-    async function loadProducts() {
-      try {
-        const response = await fetch(API_URL + '?action=getProducts');
-        const data = await response.json();
-        
-        if (data.error) {
-          document.getElementById('countInfo').textContent = 'Error: ' + data.error;
-          return;
-        }
-        
-        allProducts = data.products || [];
-        renderProducts(allProducts);
-      } catch (err) {
-        document.getElementById('countInfo').textContent = 'Failed to load. Check API URL.';
-        console.error(err);
-      }
+<!-- ============ HOME SCREEN ============ -->
+<div class="screen active" id="screen-home">
+  <div class="home-container">
+    <div class="home-hello">Hello, <strong id="userName">...</strong> 👋</div>
+    <button class="btn" onclick="showScreen('newDelivery')">📦 New Delivery</button>
+    <button class="btn btn-secondary" onclick="showScreen('products')">📋 View Products</button>
+  </div>
+</div>
+
+<!-- ============ PRODUCTS LIST SCREEN ============ -->
+<div class="screen" id="screen-products">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h1>📋 Products</h1>
+  </div>
+  <div style="padding: 16px;">
+    <input type="text" class="search-box" id="productSearch" placeholder="Search product...">
+  </div>
+  <div class="count-info" id="productCount">Loading...</div>
+  <div class="product-list" id="productList"></div>
+</div>
+
+<!-- ============ NEW DELIVERY SCREEN ============ -->
+<div class="screen" id="screen-newDelivery">
+  <div class="header">
+    <button class="back-btn" onclick="confirmBackHome()">← Back</button>
+    <h1>📦 New Delivery</h1>
+  </div>
+  <div class="form-container">
+    <!-- Product picker area -->
+    <div id="productPickerArea">
+      <div class="form-group">
+        <label class="form-label">Select Product</label>
+        <input type="text" class="search-box" id="deliverySearch" placeholder="Type to search...">
+      </div>
+      <div id="deliverySearchResults" class="product-list" style="padding: 0; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <!-- Item form (appears after product is picked) -->
+    <div id="itemForm" style="display: none;">
+      <div class="selected-product">
+        <div class="product-id" id="selectedProductId"></div>
+        <div class="product-name" id="selectedProductName"></div>
+        <span class="change-link" onclick="resetItemForm()">Change product</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Location / Pantry</label>
+        <select class="form-select" id="locationSelect"><option value="">Loading...</option></select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Quantity</label>
+        <input type="number" class="form-input" id="itemQuantity" min="0.1" step="0.1" placeholder="e.g. 3">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Unit (optional)</label>
+        <input type="text" class="form-input" id="itemUnit" placeholder="e.g. bottle, kg, pcs">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Expiry Date</label>
+        <input type="date" class="form-input" id="itemExpiry">
+      </div>
+
+      <button class="btn" onclick="addItemToDelivery()">+ Add to Delivery</button>
+    </div>
+
+    <!-- Items list -->
+    <div class="items-list" id="itemsListContainer" style="display: none;">
+      <div class="items-header">Items in this delivery (<span id="itemsCount">0</span>)</div>
+      <div id="itemsList"></div>
+      <button class="btn" id="submitBtn" onclick="submitDelivery()" style="margin-top: 16px;">✅ Submit Delivery</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwhj6lHg84JLxQl41hB4luCFwn6zMP8cw9Azm8b4WjSmm0EQFzjYheEVZl69-HkO804bQ/exec';
+  
+  const tg = window.Telegram.WebApp;
+  tg.ready(); tg.expand();
+  
+  const user = tg.initDataUnsafe.user;
+  const userId = user ? user.id : null;
+  const userFirstName = user ? user.first_name : 'User';
+  
+  document.getElementById('userName').textContent = userFirstName;
+  
+  let allProducts = [];
+  let allLocations = [];
+  let pickedProduct = null;
+  let deliveryItems = [];
+  
+  // ========== NAVIGATION ==========
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+    if (name === 'products' && allProducts.length === 0) loadProducts();
+    if (name === 'newDelivery') {
+      if (allProducts.length === 0) loadProducts();
+      if (allLocations.length === 0) loadLocations();
     }
-    
-    function renderProducts(products) {
-      const list = document.getElementById('productList');
-      const info = document.getElementById('countInfo');
-      
-      info.textContent = products.length + ' products';
-      
-      if (products.length === 0) {
-        list.innerHTML = '<div class="status">No products match your search</div>';
-        return;
-      }
-      
-      list.innerHTML = products.map(p => `
-        <div class="product-item">
-          <div class="product-id">${p.product_id}</div>
-          <div class="product-name">${escapeHtml(p.name)}</div>
-        </div>
-      `).join('');
+  }
+  
+  function confirmBackHome() {
+    if (deliveryItems.length > 0) {
+      if (!confirm('You have ' + deliveryItems.length + ' items. Discard this delivery?')) return;
     }
-    
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>"']/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-      }[c]));
+    deliveryItems = [];
+    resetItemForm();
+    renderItemsList();
+    showScreen('home');
+  }
+  
+  // ========== DATA LOADING ==========
+  async function loadProducts() {
+    try {
+      const r = await fetch(API_URL + '?action=getProducts');
+      const d = await r.json();
+      allProducts = d.products || [];
+      renderProductList(allProducts);
+    } catch (e) {
+      document.getElementById('productCount').textContent = 'Failed to load products';
     }
+  }
+  
+  async function loadLocations() {
+    try {
+      const r = await fetch(API_URL + '?action=getLocations');
+      const d = await r.json();
+      allLocations = d.locations || [];
+      const sel = document.getElementById('locationSelect');
+      sel.innerHTML = '<option value="">Select pantry...</option>' +
+        allLocations.map(l => `<option value="${l.location_id}">${escapeHtml(l.name)}</option>`).join('');
+    } catch (e) {
+      document.getElementById('locationSelect').innerHTML = '<option>Failed to load</option>';
+    }
+  }
+  
+  // ========== PRODUCTS SCREEN ==========
+  function renderProductList(products) {
+    document.getElementById('productCount').textContent = products.length + ' products';
+    const html = products.map(p => `
+      <div class="product-item">
+        <div class="product-id">${p.product_id}</div>
+        <div class="product-name">${escapeHtml(p.name)}</div>
+      </div>
+    `).join('');
+    document.getElementById('productList').innerHTML = html || '<div class="empty-state">No matches</div>';
+  }
+  
+  document.getElementById('productSearch').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    const filtered = q ? allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)) : allProducts;
+    renderProductList(filtered);
+  });
+  
+  // ========== NEW DELIVERY — PRODUCT PICKER ==========
+  document.getElementById('deliverySearch').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    const results = document.getElementById('deliverySearchResults');
+    if (!q) { results.innerHTML = ''; return; }
+    const filtered = allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)).slice(0, 20);
+    results.innerHTML = filtered.map(p => `
+      <div class="product-item" onclick="pickProduct('${p.product_id}')">
+        <div class="product-id">${p.product_id}</div>
+        <div class="product-name">${escapeHtml(p.name)}</div>
+      </div>
+    `).join('') || '<div class="empty-state">No matches</div>';
+  });
+  
+  function pickProduct(productId) {
+    pickedProduct = allProducts.find(p => p.product_id === productId);
+    if (!pickedProduct) return;
+    document.getElementById('productPickerArea').style.display = 'none';
+    document.getElementById('itemForm').style.display = 'block';
+    document.getElementById('selectedProductId').textContent = pickedProduct.product_id;
+    document.getElementById('selectedProductName').textContent = pickedProduct.name;
+    if (pickedProduct.default_unit) document.getElementById('itemUnit').value = pickedProduct.default_unit;
+  }
+  
+  function resetItemForm() {
+    pickedProduct = null;
+    document.getElementById('productPickerArea').style.display = 'block';
+    document.getElementById('itemForm').style.display = 'none';
+    document.getElementById('deliverySearch').value = '';
+    document.getElementById('deliverySearchResults').innerHTML = '';
+    document.getElementById('itemQuantity').value = '';
+    document.getElementById('itemUnit').value = '';
+    document.getElementById('itemExpiry').value = '';
+    document.getElementById('locationSelect').value = '';
+  }
+  
+  // ========== ADD ITEM TO DELIVERY ==========
+  function addItemToDelivery() {
+    const locationId = document.getElementById('locationSelect').value;
+    const quantity = parseFloat(document.getElementById('itemQuantity').value);
+    const unit = document.getElementById('itemUnit').value.trim();
+    const expiry = document.getElementById('itemExpiry').value;
     
-    document.getElementById('search').addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase().trim();
-      if (!query) {
-        renderProducts(allProducts);
-        return;
-      }
-      const filtered = allProducts.filter(p => 
-        p.name.toLowerCase().includes(query) || 
-        p.product_id.toLowerCase().includes(query)
-      );
-      renderProducts(filtered);
+    if (!pickedProduct) return showToast('Pick a product first');
+    if (!locationId) return showToast('Select a location');
+    if (!quantity || quantity <= 0) return showToast('Enter valid quantity');
+    if (!expiry) return showToast('Enter expiry date');
+    
+    const locationName = (allLocations.find(l => l.location_id === locationId) || {}).name || locationId;
+    deliveryItems.push({
+      product_id: pickedProduct.product_id,
+      product_name: pickedProduct.name,
+      location_id: locationId,
+      location_name: locationName,
+      quantity: quantity,
+      unit: unit,
+      expiry_date: expiry
     });
     
-    loadProducts();
-  </script>
+    renderItemsList();
+    resetItemForm();
+    showToast('Item added ✓');
+  }
+  
+  function removeItem(idx) {
+    deliveryItems.splice(idx, 1);
+    renderItemsList();
+  }
+  
+  function renderItemsList() {
+    const container = document.getElementById('itemsListContainer');
+    if (deliveryItems.length === 0) { container.style.display = 'none'; return; }
+    container.style.display = 'block';
+    document.getElementById('itemsCount').textContent = deliveryItems.length;
+    document.getElementById('itemsList').innerHTML = deliveryItems.map((item, i) => `
+      <div class="item-chip">
+        <div class="item-chip-info">
+          <div>${escapeHtml(item.product_name)}</div>
+          <div class="item-chip-meta">${item.quantity} ${item.unit || ''} · ${escapeHtml(item.location_name)} · exp ${item.expiry_date}</div>
+        </div>
+        <button class="item-remove" onclick="removeItem(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+  
+  // ========== SUBMIT ==========
+  async function submitDelivery() {
+    if (deliveryItems.length === 0) return showToast('No items');
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = 'Submitting...';
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'submitDelivery',
+          userId: userId,
+          items: deliveryItems.map(i => ({
+            product_id: i.product_id, location_id: i.location_id,
+            quantity: i.quantity, unit: i.unit, expiry_date: i.expiry_date
+          }))
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✅ ' + d.items_count + ' items saved');
+        deliveryItems = []; renderItemsList(); resetItemForm();
+        setTimeout(() => showScreen('home'), 1500);
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) {
+      showToast('Submit failed: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = '✅ Submit Delivery';
+    }
+  }
+  
+  // ========== UTILS ==========
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+  
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+</script>
 </body>
 </html>
