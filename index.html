@@ -40,10 +40,31 @@
       background: var(--tg-theme-secondary-bg-color, #f0f0f0);
       color: var(--tg-theme-text-color, #000);
     }
+    .btn-admin {
+      background: #8e44ad;
+      color: #fff;
+    }
+    .btn-small {
+      padding: 8px 14px;
+      font-size: 14px;
+      width: auto;
+      margin: 0;
+    }
+    .btn-consume {
+      background: #e74c3c;
+      color: #fff;
+    }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .home-container { padding: 24px 16px; }
     .home-hello { margin-bottom: 24px; font-size: 15px; color: var(--tg-theme-hint-color, #888); }
     .home-hello strong { color: var(--tg-theme-text-color, #000); font-weight: 600; }
+    .section-title {
+      font-size: 13px;
+      color: var(--tg-theme-hint-color, #888);
+      margin: 16px 0 8px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
     .search-box {
       width: 100%; padding: 12px 16px; font-size: 16px;
       border: 1px solid var(--tg-theme-hint-color, #ccc); border-radius: 10px;
@@ -91,6 +112,27 @@
       background: none; border: none; color: #e74c3c;
       font-size: 20px; cursor: pointer; padding: 0 8px;
     }
+    .inv-item {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .inv-item-info { flex: 1; }
+    .inv-item-name { font-weight: 500; font-size: 15px; margin-bottom: 4px; }
+    .inv-item-meta { font-size: 12px; color: var(--tg-theme-hint-color, #888); }
+    .inv-item-expiry {
+      font-size: 12px; margin-top: 4px;
+      font-weight: 500;
+    }
+    .expiry-soon { color: #e74c3c; }
+    .expiry-warn { color: #f39c12; }
+    .expiry-ok { color: #27ae60; }
+    .filter-bar {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
+    }
     .empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #888); }
     .toast {
       position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
@@ -103,14 +145,25 @@
 </head>
 <body>
 
+<!-- HOME SCREEN -->
 <div class="screen active" id="screen-home">
   <div class="home-container">
     <div class="home-hello">Hello, <strong id="userName">...</strong> 👋</div>
+    
+    <div class="section-title">Daily Tasks</div>
     <button class="btn" onclick="showScreen('newDelivery')">📦 New Delivery</button>
+    <button class="btn btn-secondary" onclick="showScreen('inventory')">📊 View Inventory</button>
+    <button class="btn btn-secondary" onclick="showScreen('stocktake')">📝 Stocktake</button>
     <button class="btn btn-secondary" onclick="showScreen('products')">📋 View Products</button>
+    
+    <div id="adminSection" style="display: none;">
+      <div class="section-title">Admin</div>
+      <button class="btn btn-admin" onclick="showScreen('addProduct')">➕ Add New Product</button>
+    </div>
   </div>
 </div>
 
+<!-- PRODUCTS SCREEN -->
 <div class="screen" id="screen-products">
   <div class="header">
     <button class="back-btn" onclick="showScreen('home')">← Back</button>
@@ -123,6 +176,7 @@
   <div class="product-list" id="productList"></div>
 </div>
 
+<!-- NEW DELIVERY SCREEN -->
 <div class="screen" id="screen-newDelivery">
   <div class="header">
     <button class="back-btn" onclick="confirmBackHome()">← Back</button>
@@ -143,17 +197,14 @@
         <div class="product-name" id="selectedProductName"></div>
         <span class="change-link" onclick="resetItemForm()">Change product</span>
       </div>
-
       <div class="form-group">
         <label class="form-label">Location / Pantry</label>
         <select class="form-select" id="locationSelect"><option value="">Loading...</option></select>
       </div>
-
       <div class="form-group">
         <label class="form-label">Quantity</label>
         <input type="number" class="form-input" id="itemQuantity" min="1" step="1" placeholder="e.g. 3">
       </div>
-
       <div class="form-group">
         <label class="form-label">Unit</label>
         <select class="form-select" id="itemUnit">
@@ -163,12 +214,10 @@
           <option value="piece">Piece</option>
         </select>
       </div>
-
       <div class="form-group">
         <label class="form-label">Expiry Date</label>
         <input type="date" class="form-input" id="itemExpiry">
       </div>
-
       <button class="btn" onclick="addItemToDelivery()">+ Add to Delivery</button>
     </div>
 
@@ -177,6 +226,68 @@
       <div id="itemsList"></div>
       <button class="btn" id="submitBtn" onclick="submitDelivery()" style="margin-top: 16px;">✅ Submit Delivery</button>
     </div>
+  </div>
+</div>
+
+<!-- INVENTORY SCREEN -->
+<div class="screen" id="screen-inventory">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h1>📊 Inventory</h1>
+  </div>
+  <div class="filter-bar">
+    <select class="form-select" id="inventoryLocationFilter" onchange="renderInventory()">
+      <option value="">All locations</option>
+    </select>
+  </div>
+  <div class="count-info" id="inventoryCount">Loading...</div>
+  <div id="inventoryList"></div>
+</div>
+
+<!-- STOCKTAKE SCREEN -->
+<div class="screen" id="screen-stocktake">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h1>📝 Stocktake</h1>
+  </div>
+  <div class="filter-bar">
+    <select class="form-select" id="stocktakeLocationFilter" onchange="renderStocktake()">
+      <option value="">All locations</option>
+    </select>
+  </div>
+  <div class="count-info" id="stocktakeCount">Tap "Consumed" to remove an item from active inventory</div>
+  <div id="stocktakeList"></div>
+</div>
+
+<!-- ADD PRODUCT SCREEN -->
+<div class="screen" id="screen-addProduct">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h1>➕ Add Product</h1>
+  </div>
+  <div class="form-container">
+    <div class="form-group">
+      <label class="form-label">Product Name *</label>
+      <input type="text" class="form-input" id="newProductName" placeholder="e.g. Nutella Dark Chocolate 400g">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category (optional)</label>
+      <input type="text" class="form-input" id="newProductCategory" placeholder="e.g. Sweets">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Default Unit (optional)</label>
+      <select class="form-select" id="newProductUnit">
+        <option value="">Select unit...</option>
+        <option value="box">Box</option>
+        <option value="pack">Pack</option>
+        <option value="piece">Piece</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Shelf Life in months (optional)</label>
+      <input type="number" class="form-input" id="newProductShelfLife" min="1" step="1" placeholder="e.g. 12">
+    </div>
+    <button class="btn btn-admin" onclick="submitNewProduct()">✅ Add Product</button>
   </div>
 </div>
 
@@ -198,9 +309,26 @@
   
   let allProducts = [];
   let allLocations = [];
+  let allInventory = [];
   let pickedProduct = null;
   let deliveryItems = [];
+  let isUserAdmin = false;
   
+  // ---- Role check on load ----
+  async function checkUserRole() {
+    if (!userId) return;
+    try {
+      const r = await fetch(API_URL + '?action=checkRole&telegramId=' + userId);
+      const d = await r.json();
+      isUserAdmin = d.isAdmin === true;
+      if (isUserAdmin) {
+        document.getElementById('adminSection').style.display = 'block';
+      }
+    } catch (e) {}
+  }
+  checkUserRole();
+  
+  // ---- Navigation ----
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + name).classList.add('active');
@@ -208,6 +336,16 @@
     if (name === 'newDelivery') {
       if (allProducts.length === 0) loadProducts();
       if (allLocations.length === 0) loadLocations();
+    }
+    if (name === 'inventory') {
+      if (allLocations.length === 0) loadLocations().then(() => populateLocationFilter('inventoryLocationFilter'));
+      else populateLocationFilter('inventoryLocationFilter');
+      loadInventoryAndRender('inventory');
+    }
+    if (name === 'stocktake') {
+      if (allLocations.length === 0) loadLocations().then(() => populateLocationFilter('stocktakeLocationFilter'));
+      else populateLocationFilter('stocktakeLocationFilter');
+      loadInventoryAndRender('stocktake');
     }
   }
   
@@ -221,6 +359,7 @@
     showScreen('home');
   }
   
+  // ---- Data loading ----
   async function loadProducts() {
     try {
       const r = await fetch(API_URL + '?action=getProducts');
@@ -228,7 +367,7 @@
       allProducts = d.products || [];
       renderProductList(allProducts);
     } catch (e) {
-      document.getElementById('productCount').textContent = 'Failed to load products';
+      document.getElementById('productCount').textContent = 'Failed to load';
     }
   }
   
@@ -240,11 +379,29 @@
       const sel = document.getElementById('locationSelect');
       sel.innerHTML = '<option value="">Select pantry...</option>' +
         allLocations.map(l => `<option value="${l.location_id}">${escapeHtml(l.name)}</option>`).join('');
+    } catch (e) {}
+  }
+  
+  function populateLocationFilter(selectId) {
+    const sel = document.getElementById(selectId);
+    sel.innerHTML = '<option value="">All locations</option>' +
+      allLocations.map(l => `<option value="${l.location_id}">${escapeHtml(l.name)}</option>`).join('');
+  }
+  
+  async function loadInventoryAndRender(screen) {
+    try {
+      const r = await fetch(API_URL + '?action=getInventory');
+      const d = await r.json();
+      allInventory = d.items || [];
+      if (screen === 'inventory') renderInventory();
+      else renderStocktake();
     } catch (e) {
-      document.getElementById('locationSelect').innerHTML = '<option>Failed to load</option>';
+      if (screen === 'inventory') document.getElementById('inventoryCount').textContent = 'Failed to load';
+      else document.getElementById('stocktakeCount').textContent = 'Failed to load';
     }
   }
   
+  // ---- Products Screen ----
   function renderProductList(products) {
     document.getElementById('productCount').textContent = products.length + ' products';
     const html = products.map(p => `
@@ -255,13 +412,13 @@
     `).join('');
     document.getElementById('productList').innerHTML = html || '<div class="empty-state">No matches</div>';
   }
-  
   document.getElementById('productSearch').addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
     const filtered = q ? allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)) : allProducts;
     renderProductList(filtered);
   });
   
+  // ---- New Delivery ----
   document.getElementById('deliverySearch').addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
     const results = document.getElementById('deliverySearchResults');
@@ -318,7 +475,6 @@
       unit: unit,
       expiry_date: expiry
     });
-    
     renderItemsList();
     resetItemForm();
     showToast('Item added ✓');
@@ -349,7 +505,6 @@
     if (deliveryItems.length === 0) return showToast('No items');
     const btn = document.getElementById('submitBtn');
     btn.disabled = true; btn.textContent = 'Submitting...';
-    
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
@@ -372,18 +527,124 @@
         showToast('Error: ' + (d.error || 'unknown'));
       }
     } catch (e) {
-      showToast('Submit failed: ' + e.message);
+      showToast('Submit failed');
     } finally {
       btn.disabled = false; btn.textContent = '✅ Submit Delivery';
     }
   }
   
+  // ---- Inventory Browser ----
+  function renderInventory() {
+    const filter = document.getElementById('inventoryLocationFilter').value;
+    const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
+    document.getElementById('inventoryCount').textContent = filtered.length + ' active items';
+    document.getElementById('inventoryList').innerHTML = filtered.map(i => `
+      <div class="inv-item">
+        <div class="inv-item-info">
+          <div class="inv-item-name">${escapeHtml(i.product_name)}</div>
+          <div class="inv-item-meta">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
+          <div class="inv-item-expiry ${expiryClass(i.days_to_expiry)}">
+            ${expiryLabel(i)}
+          </div>
+        </div>
+      </div>
+    `).join('') || '<div class="empty-state">No items</div>';
+  }
+  
+  // ---- Stocktake ----
+  function renderStocktake() {
+    const filter = document.getElementById('stocktakeLocationFilter').value;
+    const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
+    document.getElementById('stocktakeCount').textContent = filtered.length + ' active items';
+    document.getElementById('stocktakeList').innerHTML = filtered.map(i => `
+      <div class="inv-item" id="item-${i.item_id}">
+        <div class="inv-item-info">
+          <div class="inv-item-name">${escapeHtml(i.product_name)}</div>
+          <div class="inv-item-meta">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
+          <div class="inv-item-expiry ${expiryClass(i.days_to_expiry)}">${expiryLabel(i)}</div>
+        </div>
+        <button class="btn btn-consume btn-small" onclick="markAsConsumed('${i.item_id}')">Consumed</button>
+      </div>
+    `).join('') || '<div class="empty-state">No items</div>';
+  }
+  
+  async function markAsConsumed(itemId) {
+    if (!confirm('Mark this item as consumed?')) return;
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'markConsumed', itemId: itemId })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✓ Removed from inventory');
+        allInventory = allInventory.filter(i => i.item_id !== itemId);
+        renderStocktake();
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) {
+      showToast('Failed to update');
+    }
+  }
+  
+  function expiryClass(days) {
+    if (days < 32) return 'expiry-soon';
+    if (days < 90) return 'expiry-warn';
+    return 'expiry-ok';
+  }
+  
+  function expiryLabel(item) {
+    const d = item.days_to_expiry;
+    if (d < 0) return '⚠️ Expired ' + Math.abs(d) + ' days ago';
+    if (d === 0) return '⚠️ Expires today';
+    return 'Expires in ' + d + ' days (' + item.expiry_date + ')';
+  }
+  
+  // ---- Add Product (admin) ----
+  async function submitNewProduct() {
+    const name = document.getElementById('newProductName').value.trim();
+    const category = document.getElementById('newProductCategory').value.trim();
+    const unit = document.getElementById('newProductUnit').value;
+    const shelfLife = document.getElementById('newProductShelfLife').value;
+    
+    if (!name) return showToast('Product name is required');
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'addProduct',
+          telegramId: userId,
+          name: name,
+          category: category,
+          default_unit: unit,
+          shelf_life_months: shelfLife
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✅ ' + d.product_id + ' added');
+        document.getElementById('newProductName').value = '';
+        document.getElementById('newProductCategory').value = '';
+        document.getElementById('newProductUnit').value = '';
+        document.getElementById('newProductShelfLife').value = '';
+        allProducts = []; // force reload next time
+        setTimeout(() => showScreen('home'), 1500);
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) {
+      showToast('Failed');
+    }
+  }
+  
+  // ---- Utils ----
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2000);
   }
-  
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
