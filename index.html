@@ -52,8 +52,17 @@
       margin: 0;
     }
     .btn-consume {
+      background: #27ae60;
+      color: #fff;
+    }
+    .btn-discard {
       background: #e74c3c;
       color: #fff;
+    }
+    }
+    .stocktake-actions {
+      display: flex;
+      gap: 6px;
     }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .home-container { padding: 24px 16px; }
@@ -644,7 +653,10 @@
           <div class="inv-item-meta">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
           <div class="inv-item-expiry ${expiryClass(i.days_to_expiry)}">${expiryLabel(i)}</div>
         </div>
-        <button class="btn btn-consume btn-small" onclick="markAsConsumed('${i.item_id}')">Consume</button>
+        <div class="stocktake-actions">
+          <button class="btn btn-consume btn-small" onclick="markAsConsumed('${i.item_id}')">Consume</button>
+          <button class="btn btn-discard btn-small" onclick="markAsDiscarded('${i.item_id}')">Discard</button>
+        </div>
       </div>
     `).join('') || '<div class="empty-state">No items</div>';
   }
@@ -714,7 +726,7 @@
           <div class="inv-item-meta">${escapeHtml(i.location_name)} · opened by ${escapeHtml(i.opened_by || '')}</div>
           <div class="inv-item-expiry ${openedExpiryClass(i.days_to_expiry)}">${openedExpiryLabel(i)}</div>
         </div>
-        <button class="btn btn-consume btn-small" onclick="removeOpenedItem('${i.item_id}')">Discard</button>
+        <button class="btn btn-consume btn-small" onclick="removeOpenedItem('${i.item_id}')">Consumed</button>
       </div>
     `).join('') || '<div class="empty-state">No opened items yet. Tap "+ Mark Item as Opened" above.</div>';
   }
@@ -734,14 +746,15 @@
   }
   
   async function removeOpenedItem(itemId) {
-    if (!confirm('Remove this opened item from the list?\n(Use this after you physically discard it.)')) return;
+    if (!confirm('Mark this opened item as Consumed?\n(Used by guest, served, or finished)')) return;
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
         body: JSON.stringify({
           action: 'removeOpenedItem',
           itemId: itemId,
-          userName: userFullName
+          userName: userFullName,
+          status: 'consumed'
         })
       });
       const d = await r.json();
@@ -754,6 +767,63 @@
       }
     } catch (e) {
       showToast('Failed');
+    }
+  }
+
+  async function markAsDiscarded(itemId) {
+    const item = allInventory.find(i => i.item_id === itemId);
+    if (!item) return;
+    
+    const maxQty = parseFloat(item.quantity) || 0;
+    const unit = item.unit || 'units';
+    
+    const input = prompt(
+      'How many ' + unit + ' to DISCARD (waste)?\n\n' +
+      'Product: ' + item.product_name + '\n' +
+      'Available: ' + maxQty + ' ' + unit + '\n\n' +
+      'Enter a number between 1 and ' + maxQty + ':',
+      maxQty
+    );
+    
+    if (input === null) return;
+    
+    const qty = parseFloat(input);
+    if (isNaN(qty) || qty <= 0) {
+      showToast('Invalid quantity');
+      return;
+    }
+    if (qty > maxQty) {
+      showToast('Cannot exceed ' + maxQty);
+      return;
+    }
+    
+    if (!confirm('Mark ' + qty + ' ' + unit + ' as DISCARDED (waste)?\n\nThis action will be tracked for waste analytics.')) return;
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'markDiscarded',
+          itemId: itemId,
+          userName: userFullName,
+          quantity: qty
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        if (d.remaining === 0) {
+          showToast('🗑️ Fully discarded');
+          allInventory = allInventory.filter(i => i.item_id !== itemId);
+        } else {
+          showToast('🗑️ ' + qty + ' discarded · ' + d.remaining + ' remaining');
+          item.quantity = d.remaining;
+        }
+        renderStocktake();
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) {
+      showToast('Failed to update');
     }
   }
   
