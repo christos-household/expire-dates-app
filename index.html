@@ -563,22 +563,58 @@
           <div class="inv-item-meta">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
           <div class="inv-item-expiry ${expiryClass(i.days_to_expiry)}">${expiryLabel(i)}</div>
         </div>
-        <button class="btn btn-consume btn-small" onclick="markAsConsumed('${i.item_id}')">Consumed</button>
+        <button class="btn btn-consume btn-small" onclick="markAsConsumed('${i.item_id}')">Consume</button>
       </div>
     `).join('') || '<div class="empty-state">No items</div>';
   }
   
   async function markAsConsumed(itemId) {
-    if (!confirm('Mark this item as consumed?')) return;
+    // Find the item to know its max quantity
+    const item = allInventory.find(i => i.item_id === itemId);
+    if (!item) return;
+    
+    const maxQty = parseFloat(item.quantity) || 0;
+    const unit = item.unit || 'units';
+    
+    const input = prompt(
+      'How many ' + unit + ' to consume?\n\n' +
+      'Product: ' + item.product_name + '\n' +
+      'Available: ' + maxQty + ' ' + unit + '\n\n' +
+      'Enter a number between 1 and ' + maxQty + ':',
+      maxQty
+    );
+    
+    if (input === null) return; // user cancelled
+    
+    const qty = parseFloat(input);
+    if (isNaN(qty) || qty <= 0) {
+      showToast('Invalid quantity');
+      return;
+    }
+    if (qty > maxQty) {
+      showToast('Cannot exceed ' + maxQty);
+      return;
+    }
+    
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'markConsumed', itemId: itemId, userName: userFullName })
+        body: JSON.stringify({
+          action: 'markConsumed',
+          itemId: itemId,
+          userName: userFullName,
+          quantity: qty
+        })
       });
       const d = await r.json();
       if (d.success) {
-        showToast('✓ Removed from inventory');
-        allInventory = allInventory.filter(i => i.item_id !== itemId);
+        if (d.remaining === 0) {
+          showToast('✓ Fully consumed');
+          allInventory = allInventory.filter(i => i.item_id !== itemId);
+        } else {
+          showToast('✓ ' + qty + ' consumed · ' + d.remaining + ' remaining');
+          item.quantity = d.remaining;
+        }
         renderStocktake();
       } else {
         showToast('Error: ' + (d.error || 'unknown'));
