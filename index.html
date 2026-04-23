@@ -306,6 +306,10 @@
       <input type="number" class="form-input" id="openFormQuantity" min="1" step="1" value="1">
     </div>
     <div class="form-group">
+      <label class="form-label">Stored at (pantry)</label>
+      <select class="form-select" id="openFormLocationSelect"><option value="">Loading...</option></select>
+    </div>
+    <div class="form-group">
       <label class="form-label">New expiry date (after opening)</label>
       <input type="date" class="form-input" id="openFormExpiry">
     </div>
@@ -770,22 +774,31 @@
     itemToOpen = allInventory.find(i => i.item_id === itemId);
     if (!itemToOpen) return;
     document.getElementById('openFormProductName').textContent = itemToOpen.product_name;
-    document.getElementById('openFormLocation').textContent = itemToOpen.location_name;
+    document.getElementById('openFormLocation').textContent = 'From: ' + itemToOpen.location_name;
     document.getElementById('openFormAvailable').textContent = itemToOpen.quantity + ' ' + (itemToOpen.unit || '');
     document.getElementById('openFormQuantity').max = itemToOpen.quantity;
     document.getElementById('openFormQuantity').value = 1;
     document.getElementById('openFormExpiry').value = '';
+    
+    // Populate location dropdown, default to source location
+    const sel = document.getElementById('openFormLocationSelect');
+    sel.innerHTML = allLocations.map(l => 
+      `<option value="${l.location_id}" ${l.location_id === itemToOpen.location_id ? 'selected' : ''}>${escapeHtml(l.name)}</option>`
+    ).join('');
+    
     showScreen('openForm');
   }
   
   async function submitOpenItem() {
     const quantity = parseInt(document.getElementById('openFormQuantity').value);
     const newExpiry = document.getElementById('openFormExpiry').value;
+    const openedLocationId = document.getElementById('openFormLocationSelect').value;
     
     if (!itemToOpen) return showToast('No item selected');
     if (!quantity || quantity <= 0) return showToast('Enter valid quantity');
     if (quantity > itemToOpen.quantity) return showToast('Cannot exceed ' + itemToOpen.quantity);
     if (!newExpiry) return showToast('Enter new expiry date');
+    if (!openedLocationId) return showToast('Select a pantry');
     
     try {
       const r = await fetch(API_URL, {
@@ -795,6 +808,7 @@
           inventoryItemId: itemToOpen.item_id,
           quantity: quantity,
           newExpiryDate: newExpiry,
+          openedLocationId: openedLocationId,
           userName: userFullName
         })
       });
