@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -154,6 +155,7 @@
     <button class="btn" onclick="showScreen('newDelivery')">📦 New Delivery</button>
     <button class="btn btn-secondary" onclick="showScreen('inventory')">📊 View Inventory</button>
     <button class="btn btn-secondary" onclick="showScreen('stocktake')">📝 Stocktake</button>
+    <button class="btn btn-secondary" onclick="showScreen('openedItems')">🍯 Open Items</button>
     <button class="btn btn-secondary" onclick="showScreen('products')">📋 View Products</button>
     
     <div id="adminSection" style="display: none;">
@@ -255,8 +257,60 @@
       <option value="">All locations</option>
     </select>
   </div>
-  <div class="count-info" id="stocktakeCount">Tap "Consumed" to remove an item from active inventory</div>
+  <div class="count-info" id="stocktakeCount">Tap "Consume" to remove an item from active inventory</div>
   <div id="stocktakeList"></div>
+</div>
+
+<!-- OPEN ITEMS LIST SCREEN -->
+<div class="screen" id="screen-openedItems">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h1>🍯 Open Items</h1>
+  </div>
+  <div class="form-container">
+    <button class="btn" onclick="showScreen('pickToOpen')">+ Mark Item as Opened</button>
+  </div>
+  <div class="count-info" id="openedItemsCount">Loading...</div>
+  <div id="openedItemsList"></div>
+</div>
+
+<!-- PICK ITEM FROM INVENTORY TO OPEN -->
+<div class="screen" id="screen-pickToOpen">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('openedItems')">← Back</button>
+    <h1>Select item to open</h1>
+  </div>
+  <div class="filter-bar">
+    <select class="form-select" id="pickToOpenFilter" onchange="renderPickToOpen()">
+      <option value="">All locations</option>
+    </select>
+  </div>
+  <div class="count-info" id="pickToOpenCount">Tap an item from your pantries</div>
+  <div id="pickToOpenList" class="product-list"></div>
+</div>
+
+<!-- OPEN FORM SCREEN (set new expiry) -->
+<div class="screen" id="screen-openForm">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('pickToOpen')">← Back</button>
+    <h1>🍯 Mark as Opened</h1>
+  </div>
+  <div class="form-container">
+    <div class="selected-product">
+      <div class="product-name" id="openFormProductName"></div>
+      <div class="product-id" id="openFormLocation"></div>
+      <div class="product-id">Available: <span id="openFormAvailable"></span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">How many to open</label>
+      <input type="number" class="form-input" id="openFormQuantity" min="1" step="1" value="1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">New expiry date (after opening)</label>
+      <input type="date" class="form-input" id="openFormExpiry">
+    </div>
+    <button class="btn" onclick="submitOpenItem()">✅ Confirm</button>
+  </div>
 </div>
 
 <!-- ADD PRODUCT SCREEN -->
@@ -310,8 +364,10 @@
   let allProducts = [];
   let allLocations = [];
   let allInventory = [];
+  let allOpenedItems = [];
   let pickedProduct = null;
   let deliveryItems = [];
+  let itemToOpen = null;
   let isUserAdmin = false;
   
   // ---- Role check on load ----
@@ -346,6 +402,14 @@
       if (allLocations.length === 0) loadLocations().then(() => populateLocationFilter('stocktakeLocationFilter'));
       else populateLocationFilter('stocktakeLocationFilter');
       loadInventoryAndRender('stocktake');
+    }
+    if (name === 'openedItems') {
+      loadOpenedItems();
+    }
+    if (name === 'pickToOpen') {
+      if (allLocations.length === 0) loadLocations().then(() => populateLocationFilter('pickToOpenFilter'));
+      else populateLocationFilter('pickToOpenFilter');
+      loadInventoryAndRender('pickToOpen');
     }
   }
   
@@ -394,10 +458,23 @@
       const d = await r.json();
       allInventory = d.items || [];
       if (screen === 'inventory') renderInventory();
-      else renderStocktake();
+      else if (screen === 'stocktake') renderStocktake();
+      else if (screen === 'pickToOpen') renderPickToOpen();
     } catch (e) {
       if (screen === 'inventory') document.getElementById('inventoryCount').textContent = 'Failed to load';
-      else document.getElementById('stocktakeCount').textContent = 'Failed to load';
+      else if (screen === 'stocktake') document.getElementById('stocktakeCount').textContent = 'Failed to load';
+      else if (screen === 'pickToOpen') document.getElementById('pickToOpenCount').textContent = 'Failed to load';
+    }
+  }
+  
+  async function loadOpenedItems() {
+    try {
+      const r = await fetch(API_URL + '?action=getOpenedItems');
+      const d = await r.json();
+      allOpenedItems = d.items || [];
+      renderOpenedItems();
+    } catch (e) {
+      document.getElementById('openedItemsCount').textContent = 'Failed to load';
     }
   }
   
@@ -569,7 +646,6 @@
   }
   
   async function markAsConsumed(itemId) {
-    // Find the item to know its max quantity
     const item = allInventory.find(i => i.item_id === itemId);
     if (!item) return;
     
@@ -584,7 +660,7 @@
       maxQty
     );
     
-    if (input === null) return; // user cancelled
+    if (input === null) return;
     
     const qty = parseFloat(input);
     if (isNaN(qty) || qty <= 0) {
@@ -621,6 +697,118 @@
       }
     } catch (e) {
       showToast('Failed to update');
+    }
+  }
+  
+  // ---- Opened Items (list + remove) ----
+  function renderOpenedItems() {
+    document.getElementById('openedItemsCount').textContent = allOpenedItems.length + ' opened items';
+    document.getElementById('openedItemsList').innerHTML = allOpenedItems.map(i => `
+      <div class="inv-item">
+        <div class="inv-item-info">
+          <div class="inv-item-name">${escapeHtml(i.product_name)}</div>
+          <div class="inv-item-meta">${escapeHtml(i.location_name)} · opened by ${escapeHtml(i.opened_by || '')}</div>
+          <div class="inv-item-expiry ${openedExpiryClass(i.days_to_expiry)}">${openedExpiryLabel(i)}</div>
+        </div>
+        <button class="btn btn-consume btn-small" onclick="removeOpenedItem('${i.item_id}')">Discard</button>
+      </div>
+    `).join('') || '<div class="empty-state">No opened items yet. Tap "+ Mark Item as Opened" above.</div>';
+  }
+  
+  function openedExpiryClass(days) {
+    if (days <= 1) return 'expiry-soon';
+    if (days <= 7) return 'expiry-warn';
+    return 'expiry-ok';
+  }
+  
+  function openedExpiryLabel(item) {
+    const d = item.days_to_expiry;
+    if (d < 0) return '⚠️ Expired ' + Math.abs(d) + ' days ago';
+    if (d === 0) return '⚠️ Expires today';
+    if (d === 1) return '⚠️ Expires tomorrow';
+    return 'Expires in ' + d + ' days (' + item.expiry_date + ')';
+  }
+  
+  async function removeOpenedItem(itemId) {
+    if (!confirm('Remove this opened item from the list?\n(Use this after you physically discard it.)')) return;
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'removeOpenedItem',
+          itemId: itemId,
+          userName: userFullName
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✓ Removed');
+        allOpenedItems = allOpenedItems.filter(i => i.item_id !== itemId);
+        renderOpenedItems();
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) {
+      showToast('Failed');
+    }
+  }
+  
+  // ---- Pick item from inventory to open ----
+  function renderPickToOpen() {
+    const filter = document.getElementById('pickToOpenFilter').value;
+    const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
+    document.getElementById('pickToOpenCount').textContent = filtered.length + ' items — tap to open';
+    document.getElementById('pickToOpenList').innerHTML = filtered.map(i => `
+      <div class="product-item" onclick="chooseItemToOpen('${i.item_id}')">
+        <div class="product-name">${escapeHtml(i.product_name)}</div>
+        <div class="product-id">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
+      </div>
+    `).join('') || '<div class="empty-state">No items in inventory</div>';
+  }
+  
+  function chooseItemToOpen(itemId) {
+    itemToOpen = allInventory.find(i => i.item_id === itemId);
+    if (!itemToOpen) return;
+    document.getElementById('openFormProductName').textContent = itemToOpen.product_name;
+    document.getElementById('openFormLocation').textContent = itemToOpen.location_name;
+    document.getElementById('openFormAvailable').textContent = itemToOpen.quantity + ' ' + (itemToOpen.unit || '');
+    document.getElementById('openFormQuantity').max = itemToOpen.quantity;
+    document.getElementById('openFormQuantity').value = 1;
+    document.getElementById('openFormExpiry').value = '';
+    showScreen('openForm');
+  }
+  
+  async function submitOpenItem() {
+    const quantity = parseInt(document.getElementById('openFormQuantity').value);
+    const newExpiry = document.getElementById('openFormExpiry').value;
+    
+    if (!itemToOpen) return showToast('No item selected');
+    if (!quantity || quantity <= 0) return showToast('Enter valid quantity');
+    if (quantity > itemToOpen.quantity) return showToast('Cannot exceed ' + itemToOpen.quantity);
+    if (!newExpiry) return showToast('Enter new expiry date');
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'openItem',
+          inventoryItemId: itemToOpen.item_id,
+          quantity: quantity,
+          newExpiryDate: newExpiry,
+          userName: userFullName
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✓ ' + (d.message || 'Opened'));
+        itemToOpen = null;
+        allInventory = []; // force reload next time
+        setTimeout(() => showScreen('openedItems'), 1000);
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) {
+      showToast('Failed to open item');
     }
   }
   
@@ -666,7 +854,7 @@
         document.getElementById('newProductCategory').value = '';
         document.getElementById('newProductUnit').value = '';
         document.getElementById('newProductShelfLife').value = '';
-        allProducts = []; // force reload next time
+        allProducts = [];
         setTimeout(() => showScreen('home'), 1500);
       } else {
         showToast('Error: ' + (d.error || 'unknown'));
