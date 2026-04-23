@@ -573,7 +573,7 @@
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'markConsumed', itemId: itemId })
+        body: JSON.stringify({ action: 'markConsumed', itemId: itemId, userName: userFullName })
       });
       const d = await r.json();
       if (d.success) {
@@ -616,6 +616,7 @@
         body: JSON.stringify({
           action: 'addProduct',
           telegramId: userId,
+          userName: userFullName,
           name: name,
           category: category,
           default_unit: unit,
