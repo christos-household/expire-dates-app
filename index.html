@@ -770,7 +770,7 @@
     `).join('') || '<div class="empty-state">No items in inventory</div>';
   }
   
-  function chooseItemToOpen(itemId) {
+  async function chooseItemToOpen(itemId) {
     itemToOpen = allInventory.find(i => i.item_id === itemId);
     if (!itemToOpen) return;
     document.getElementById('openFormProductName').textContent = itemToOpen.product_name;
@@ -780,7 +780,11 @@
     document.getElementById('openFormQuantity').value = 1;
     document.getElementById('openFormExpiry').value = '';
     
-    // Populate location dropdown, default to source location
+    // Ensure locations are loaded before populating dropdown
+    if (allLocations.length === 0) {
+      await loadLocations();
+    }
+    
     const sel = document.getElementById('openFormLocationSelect');
     sel.innerHTML = allLocations.map(l => 
       `<option value="${l.location_id}" ${l.location_id === itemToOpen.location_id ? 'selected' : ''}>${escapeHtml(l.name)}</option>`
