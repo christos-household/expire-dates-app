@@ -307,6 +307,7 @@
     <h1>Select item to open</h1>
   </div>
   <div class="filter-bar">
+    <input type="text" class="search-box" id="pickToOpenSearch" placeholder="🔍 Search by product name..." style="margin-bottom: 8px;">
     <select class="form-select" id="pickToOpenFilter" onchange="renderPickToOpen()">
       <option value="">All locations</option>
     </select>
@@ -523,6 +524,9 @@
     const q = e.target.value.toLowerCase().trim();
     const filtered = q ? allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)) : allProducts;
     renderProductList(filtered);
+  });
+  document.getElementById('pickToOpenSearch').addEventListener('input', () => {
+    renderPickToOpen();
   });
   
   // ---- New Delivery ----
@@ -847,20 +851,28 @@
   // ---- Pick item from inventory to open ----
   function renderPickToOpen() {
     const filter = document.getElementById('pickToOpenFilter').value;
-    const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
+    const searchQuery = (document.getElementById('pickToOpenSearch').value || '').toLowerCase().trim();
+    
+    let filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
+    
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(i => 
+        (i.product_name || '').toLowerCase().includes(searchQuery) ||
+        (i.location_name || '').toLowerCase().includes(searchQuery)
+      );
+    }
     
     // Sort by days_to_expiry (earliest first — FEFO)
     const sorted = [...filtered].sort((a, b) => a.days_to_expiry - b.days_to_expiry);
     
     // Find the "open first" item per product+location group
-    // (the one with earliest expiry among duplicates)
     const firstToOpenIds = new Set();
     const seen = {};
     sorted.forEach(item => {
       const key = item.product_id + '|' + item.location_id;
       if (!seen[key]) {
         seen[key] = true;
-        // Check if there are actually multiple batches of this product+location
         const count = sorted.filter(x => x.product_id === item.product_id && x.location_id === item.location_id).length;
         if (count > 1) {
           firstToOpenIds.add(item.item_id);
@@ -868,7 +880,11 @@
       }
     });
     
-    document.getElementById('pickToOpenCount').textContent = sorted.length + ' items — sorted by expiry (earliest first)';
+    const countLabel = searchQuery 
+      ? sorted.length + ' matches — sorted by expiry (earliest first)'
+      : sorted.length + ' items — sorted by expiry (earliest first)';
+    document.getElementById('pickToOpenCount').textContent = countLabel;
+    
     document.getElementById('pickToOpenList').innerHTML = sorted.map(i => {
       const badge = firstToOpenIds.has(i.item_id) ? '<span class="fefo-badge">🏆 OPEN FIRST</span>' : '';
       return `
@@ -878,7 +894,7 @@
           <div class="pick-item-expiry ${expiryClass(i.days_to_expiry)}">${expiryLabel(i)}</div>
         </div>
       `;
-    }).join('') || '<div class="empty-state">No items in inventory</div>';
+    }).join('') || '<div class="empty-state">No matches</div>';
   }
   
   async function chooseItemToOpen(itemId) {
