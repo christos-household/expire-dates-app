@@ -63,28 +63,6 @@
       display: flex;
       gap: 6px;
     }
-    .fefo-badge {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 10px;
-      margin-left: 8px;
-      letter-spacing: 0.5px;
-      vertical-align: middle;
-      color: #fff;
-    }
-    .fefo-badge-best {
-      background: #D4A24C;
-    }
-    .fefo-badge-local {
-      background: #27ae60;
-    }
-    .pick-item-expiry {
-      font-size: 12px;
-      font-weight: 500;
-      margin-top: 4px;
-    }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .home-container { padding: 24px 16px; }
     .home-hello { margin-bottom: 24px; font-size: 15px; color: var(--tg-theme-hint-color, #888); }
@@ -176,18 +154,15 @@
 </head>
 <body>
 
-<!-- HOME SCREEN -->
 <div class="screen active" id="screen-home">
   <div class="home-container">
     <div class="home-hello">Hello, <strong id="userName">...</strong> 👋</div>
-    
     <div class="section-title">Daily Tasks</div>
     <button class="btn" onclick="showScreen('newDelivery')">📦 New Delivery</button>
     <button class="btn btn-secondary" onclick="showScreen('inventory')">📊 View Inventory</button>
     <button class="btn btn-secondary" onclick="showScreen('stocktake')">📝 Stocktake</button>
     <button class="btn btn-secondary" onclick="showScreen('openedItems')">🍯 Open Items</button>
     <button class="btn btn-secondary" onclick="showScreen('products')">📋 View Products</button>
-    
     <div id="adminSection" style="display: none;">
       <div class="section-title">Admin</div>
       <button class="btn btn-admin" onclick="showScreen('addProduct')">➕ Add New Product</button>
@@ -195,7 +170,6 @@
   </div>
 </div>
 
-<!-- PRODUCTS SCREEN -->
 <div class="screen" id="screen-products">
   <div class="header">
     <button class="back-btn" onclick="showScreen('home')">← Back</button>
@@ -208,7 +182,6 @@
   <div class="product-list" id="productList"></div>
 </div>
 
-<!-- NEW DELIVERY SCREEN -->
 <div class="screen" id="screen-newDelivery">
   <div class="header">
     <button class="back-btn" onclick="confirmBackHome()">← Back</button>
@@ -222,7 +195,6 @@
       </div>
       <div id="deliverySearchResults" class="product-list" style="padding: 0; max-height: 200px; overflow-y: auto;"></div>
     </div>
-
     <div id="itemForm" style="display: none;">
       <div class="selected-product">
         <div class="product-id" id="selectedProductId"></div>
@@ -252,7 +224,6 @@
       </div>
       <button class="btn" onclick="addItemToDelivery()">+ Add to Delivery</button>
     </div>
-
     <div class="items-list" id="itemsListContainer" style="display: none;">
       <div class="items-header">Items in this delivery (<span id="itemsCount">0</span>)</div>
       <div id="itemsList"></div>
@@ -261,7 +232,6 @@
   </div>
 </div>
 
-<!-- INVENTORY SCREEN -->
 <div class="screen" id="screen-inventory">
   <div class="header">
     <button class="back-btn" onclick="showScreen('home')">← Back</button>
@@ -276,7 +246,6 @@
   <div id="inventoryList"></div>
 </div>
 
-<!-- STOCKTAKE SCREEN -->
 <div class="screen" id="screen-stocktake">
   <div class="header">
     <button class="back-btn" onclick="showScreen('home')">← Back</button>
@@ -287,11 +256,10 @@
       <option value="">All locations</option>
     </select>
   </div>
-  <div class="count-info" id="stocktakeCount">Tap "Consume" to remove an item from active inventory</div>
+  <div class="count-info" id="stocktakeCount">Tap "Consume" to remove an item</div>
   <div id="stocktakeList"></div>
 </div>
 
-<!-- OPEN ITEMS LIST SCREEN -->
 <div class="screen" id="screen-openedItems">
   <div class="header">
     <button class="back-btn" onclick="showScreen('home')">← Back</button>
@@ -304,14 +272,12 @@
   <div id="openedItemsList"></div>
 </div>
 
-<!-- PICK ITEM FROM INVENTORY TO OPEN -->
 <div class="screen" id="screen-pickToOpen">
   <div class="header">
     <button class="back-btn" onclick="showScreen('openedItems')">← Back</button>
     <h1>Select item to open</h1>
   </div>
   <div class="filter-bar">
-    <input type="text" class="search-box" id="pickToOpenSearch" placeholder="🔍 Search by product name..." style="margin-bottom: 8px;">
     <select class="form-select" id="pickToOpenFilter" onchange="renderPickToOpen()">
       <option value="">All locations</option>
     </select>
@@ -320,7 +286,6 @@
   <div id="pickToOpenList" class="product-list"></div>
 </div>
 
-<!-- OPEN FORM SCREEN (set new expiry) -->
 <div class="screen" id="screen-openForm">
   <div class="header">
     <button class="back-btn" onclick="showScreen('pickToOpen')">← Back</button>
@@ -348,7 +313,6 @@
   </div>
 </div>
 
-<!-- ADD PRODUCT SCREEN -->
 <div class="screen" id="screen-addProduct">
   <div class="header">
     <button class="back-btn" onclick="showScreen('home')">← Back</button>
@@ -473,15 +437,18 @@
       const d = await r.json();
       allLocations = d.locations || [];
       const sel = document.getElementById('locationSelect');
-      sel.innerHTML = '<option value="">Select pantry...</option>' +
-        allLocations.map(l => `<option value="${l.location_id}">${escapeHtml(l.name)}</option>`).join('');
+      if (sel) {
+        sel.innerHTML = '<option value="">Select pantry...</option>' +
+          allLocations.map(l => '<option value="' + l.location_id + '">' + escapeHtml(l.name) + '</option>').join('');
+      }
     } catch (e) {}
   }
   
   function populateLocationFilter(selectId) {
     const sel = document.getElementById(selectId);
+    if (!sel) return;
     sel.innerHTML = '<option value="">All locations</option>' +
-      allLocations.map(l => `<option value="${l.location_id}">${escapeHtml(l.name)}</option>`).join('');
+      allLocations.map(l => '<option value="' + l.location_id + '">' + escapeHtml(l.name) + '</option>').join('');
   }
   
   async function loadInventoryAndRender(screen) {
@@ -512,35 +479,14 @@
   
   function renderProductList(products) {
     document.getElementById('productCount').textContent = products.length + ' products';
-    const html = products.map(p => `
-      <div class="product-item">
-        <div class="product-id">${p.product_id}</div>
-        <div class="product-name">${escapeHtml(p.name)}</div>
-      </div>
-    `).join('');
+    const html = products.map(p => 
+      '<div class="product-item">' +
+        '<div class="product-id">' + p.product_id + '</div>' +
+        '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
+      '</div>'
+    ).join('');
     document.getElementById('productList').innerHTML = html || '<div class="empty-state">No matches</div>';
   }
-  const _ps = document.getElementById('productSearch'); if (_ps) _ps.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase().trim();
-    const filtered = q ? allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)) : allProducts;
-    renderProductList(filtered);
-  });
-  const _pts = document.getElementById('pickToOpenSearch'); if (_pts) _pts.addEventListener('input', () => {
-    renderPickToOpen();
-  });
-  
-  const _ds = document.getElementById('deliverySearch'); if (_ds) _ds.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase().trim();
-    const results = document.getElementById('deliverySearchResults');
-    if (!q) { results.innerHTML = ''; return; }
-    const filtered = allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)).slice(0, 20);
-    results.innerHTML = filtered.map(p => `
-      <div class="product-item" onclick="pickProduct('${p.product_id}')">
-        <div class="product-id">${p.product_id}</div>
-        <div class="product-name">${escapeHtml(p.name)}</div>
-      </div>
-    `).join('') || '<div class="empty-state">No matches</div>';
-  });
   
   function pickProduct(productId) {
     pickedProduct = allProducts.find(p => p.product_id === productId);
@@ -568,13 +514,11 @@
     const quantity = parseInt(document.getElementById('itemQuantity').value);
     const unit = document.getElementById('itemUnit').value;
     const expiry = document.getElementById('itemExpiry').value;
-    
     if (!pickedProduct) return showToast('Pick a product first');
     if (!locationId) return showToast('Select a location');
     if (!quantity || quantity <= 0) return showToast('Enter valid quantity');
     if (!unit) return showToast('Select a unit');
     if (!expiry) return showToast('Enter expiry date');
-    
     const locationName = (allLocations.find(l => l.location_id === locationId) || {}).name || locationId;
     deliveryItems.push({
       product_id: pickedProduct.product_id,
@@ -600,15 +544,15 @@
     if (deliveryItems.length === 0) { container.style.display = 'none'; return; }
     container.style.display = 'block';
     document.getElementById('itemsCount').textContent = deliveryItems.length;
-    document.getElementById('itemsList').innerHTML = deliveryItems.map((item, i) => `
-      <div class="item-chip">
-        <div class="item-chip-info">
-          <div>${escapeHtml(item.product_name)}</div>
-          <div class="item-chip-meta">${item.quantity} ${item.unit} · ${escapeHtml(item.location_name)} · exp ${item.expiry_date}</div>
-        </div>
-        <button class="item-remove" onclick="removeItem(${i})">✕</button>
-      </div>
-    `).join('');
+    document.getElementById('itemsList').innerHTML = deliveryItems.map((item, i) => 
+      '<div class="item-chip">' +
+        '<div class="item-chip-info">' +
+          '<div>' + escapeHtml(item.product_name) + '</div>' +
+          '<div class="item-chip-meta">' + item.quantity + ' ' + item.unit + ' · ' + escapeHtml(item.location_name) + ' · exp ' + item.expiry_date + '</div>' +
+        '</div>' +
+        '<button class="item-remove" onclick="removeItem(' + i + ')">✕</button>' +
+      '</div>'
+    ).join('');
   }
   
   async function submitDelivery() {
@@ -647,74 +591,50 @@
     const filter = document.getElementById('inventoryLocationFilter').value;
     const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
     document.getElementById('inventoryCount').textContent = filtered.length + ' active items';
-    document.getElementById('inventoryList').innerHTML = filtered.map(i => `
-      <div class="inv-item">
-        <div class="inv-item-info">
-          <div class="inv-item-name">${escapeHtml(i.product_name)}</div>
-          <div class="inv-item-meta">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
-          <div class="inv-item-expiry ${expiryClass(i.days_to_expiry)}">
-            ${expiryLabel(i)}
-          </div>
-        </div>
-      </div>
-    `).join('') || '<div class="empty-state">No items</div>';
+    document.getElementById('inventoryList').innerHTML = filtered.map(i => 
+      '<div class="inv-item">' +
+        '<div class="inv-item-info">' +
+          '<div class="inv-item-name">' + escapeHtml(i.product_name) + '</div>' +
+          '<div class="inv-item-meta">' + i.quantity + ' ' + (i.unit || '') + ' · ' + escapeHtml(i.location_name) + '</div>' +
+          '<div class="inv-item-expiry ' + expiryClass(i.days_to_expiry) + '">' + expiryLabel(i) + '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('') || '<div class="empty-state">No items</div>';
   }
   
   function renderStocktake() {
     const filter = document.getElementById('stocktakeLocationFilter').value;
     const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
     document.getElementById('stocktakeCount').textContent = filtered.length + ' active items';
-    document.getElementById('stocktakeList').innerHTML = filtered.map(i => `
-      <div class="inv-item" id="item-${i.item_id}">
-        <div class="inv-item-info">
-          <div class="inv-item-name">${escapeHtml(i.product_name)}</div>
-          <div class="inv-item-meta">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
-          <div class="inv-item-expiry ${expiryClass(i.days_to_expiry)}">${expiryLabel(i)}</div>
-        </div>
-        <div class="stocktake-actions">
-          <button class="btn btn-consume btn-small" onclick="markAsConsumed('${i.item_id}')">Consume</button>
-          <button class="btn btn-discard btn-small" onclick="markAsDiscarded('${i.item_id}')">Discard</button>
-        </div>
-      </div>
-    `).join('') || '<div class="empty-state">No items</div>';
+    document.getElementById('stocktakeList').innerHTML = filtered.map(i => 
+      '<div class="inv-item">' +
+        '<div class="inv-item-info">' +
+          '<div class="inv-item-name">' + escapeHtml(i.product_name) + '</div>' +
+          '<div class="inv-item-meta">' + i.quantity + ' ' + (i.unit || '') + ' · ' + escapeHtml(i.location_name) + '</div>' +
+          '<div class="inv-item-expiry ' + expiryClass(i.days_to_expiry) + '">' + expiryLabel(i) + '</div>' +
+        '</div>' +
+        '<div class="stocktake-actions">' +
+          '<button class="btn btn-consume btn-small" onclick="markAsConsumed(\'' + i.item_id + '\')">Consume</button>' +
+          '<button class="btn btn-discard btn-small" onclick="markAsDiscarded(\'' + i.item_id + '\')">Discard</button>' +
+        '</div>' +
+      '</div>'
+    ).join('') || '<div class="empty-state">No items</div>';
   }
   
   async function markAsConsumed(itemId) {
     const item = allInventory.find(i => i.item_id === itemId);
     if (!item) return;
-    
     const maxQty = parseFloat(item.quantity) || 0;
     const unit = item.unit || 'units';
-    
-    const input = prompt(
-      'How many ' + unit + ' to consume?\n\n' +
-      'Product: ' + item.product_name + '\n' +
-      'Available: ' + maxQty + ' ' + unit + '\n\n' +
-      'Enter a number between 1 and ' + maxQty + ':',
-      maxQty
-    );
-    
+    const input = prompt('How many ' + unit + ' to consume?\n\nProduct: ' + item.product_name + '\nAvailable: ' + maxQty + ' ' + unit + '\n\nEnter a number between 1 and ' + maxQty + ':', maxQty);
     if (input === null) return;
-    
     const qty = parseFloat(input);
-    if (isNaN(qty) || qty <= 0) {
-      showToast('Invalid quantity');
-      return;
-    }
-    if (qty > maxQty) {
-      showToast('Cannot exceed ' + maxQty);
-      return;
-    }
-    
+    if (isNaN(qty) || qty <= 0) { showToast('Invalid quantity'); return; }
+    if (qty > maxQty) { showToast('Cannot exceed ' + maxQty); return; }
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({
-          action: 'markConsumed',
-          itemId: itemId,
-          userName: userFullName,
-          quantity: qty
-        })
+        body: JSON.stringify({ action: 'markConsumed', itemId: itemId, userName: userFullName, quantity: qty })
       });
       const d = await r.json();
       if (d.success) {
@@ -729,23 +649,53 @@
       } else {
         showToast('Error: ' + (d.error || 'unknown'));
       }
-    } catch (e) {
-      showToast('Failed to update');
-    }
+    } catch (e) { showToast('Failed to update'); }
+  }
+  
+  async function markAsDiscarded(itemId) {
+    const item = allInventory.find(i => i.item_id === itemId);
+    if (!item) return;
+    const maxQty = parseFloat(item.quantity) || 0;
+    const unit = item.unit || 'units';
+    const input = prompt('How many ' + unit + ' to DISCARD (waste)?\n\nProduct: ' + item.product_name + '\nAvailable: ' + maxQty + ' ' + unit + '\n\nEnter a number between 1 and ' + maxQty + ':', maxQty);
+    if (input === null) return;
+    const qty = parseFloat(input);
+    if (isNaN(qty) || qty <= 0) { showToast('Invalid quantity'); return; }
+    if (qty > maxQty) { showToast('Cannot exceed ' + maxQty); return; }
+    if (!confirm('Mark ' + qty + ' ' + unit + ' as DISCARDED (waste)?\n\nThis action will be tracked for waste analytics.')) return;
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'markDiscarded', itemId: itemId, userName: userFullName, quantity: qty })
+      });
+      const d = await r.json();
+      if (d.success) {
+        if (d.remaining === 0) {
+          showToast('🗑️ Fully discarded');
+          allInventory = allInventory.filter(i => i.item_id !== itemId);
+        } else {
+          showToast('🗑️ ' + qty + ' discarded · ' + d.remaining + ' remaining');
+          item.quantity = d.remaining;
+        }
+        renderStocktake();
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) { showToast('Failed to update'); }
   }
   
   function renderOpenedItems() {
     document.getElementById('openedItemsCount').textContent = allOpenedItems.length + ' opened items';
-    document.getElementById('openedItemsList').innerHTML = allOpenedItems.map(i => `
-      <div class="inv-item">
-        <div class="inv-item-info">
-          <div class="inv-item-name">${escapeHtml(i.product_name)}</div>
-          <div class="inv-item-meta">${escapeHtml(i.location_name)} · opened by ${escapeHtml(i.opened_by || '')}</div>
-          <div class="inv-item-expiry ${openedExpiryClass(i.days_to_expiry)}">${openedExpiryLabel(i)}</div>
-        </div>
-        <button class="btn btn-consume btn-small" onclick="removeOpenedItem('${i.item_id}')">Consumed</button>
-      </div>
-    `).join('') || '<div class="empty-state">No opened items yet. Tap "+ Mark Item as Opened" above.</div>';
+    document.getElementById('openedItemsList').innerHTML = allOpenedItems.map(i => 
+      '<div class="inv-item">' +
+        '<div class="inv-item-info">' +
+          '<div class="inv-item-name">' + escapeHtml(i.product_name) + '</div>' +
+          '<div class="inv-item-meta">' + escapeHtml(i.location_name) + ' · opened by ' + escapeHtml(i.opened_by || '') + '</div>' +
+          '<div class="inv-item-expiry ' + openedExpiryClass(i.days_to_expiry) + '">' + openedExpiryLabel(i) + '</div>' +
+        '</div>' +
+        '<button class="btn btn-consume btn-small" onclick="removeOpenedItem(\'' + i.item_id + '\')">Consumed</button>' +
+      '</div>'
+    ).join('') || '<div class="empty-state">No opened items yet. Tap "+ Mark Item as Opened" above.</div>';
   }
   
   function openedExpiryClass(days) {
@@ -767,12 +717,7 @@
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({
-          action: 'removeOpenedItem',
-          itemId: itemId,
-          userName: userFullName,
-          status: 'consumed'
-        })
+        body: JSON.stringify({ action: 'removeOpenedItem', itemId: itemId, userName: userFullName, status: 'consumed' })
       });
       const d = await r.json();
       if (d.success) {
@@ -782,129 +727,21 @@
       } else {
         showToast('Error: ' + (d.error || 'unknown'));
       }
-    } catch (e) {
-      showToast('Failed');
-    }
-  }
-
-  async function markAsDiscarded(itemId) {
-    const item = allInventory.find(i => i.item_id === itemId);
-    if (!item) return;
-    
-    const maxQty = parseFloat(item.quantity) || 0;
-    const unit = item.unit || 'units';
-    
-    const input = prompt(
-      'How many ' + unit + ' to DISCARD (waste)?\n\n' +
-      'Product: ' + item.product_name + '\n' +
-      'Available: ' + maxQty + ' ' + unit + '\n\n' +
-      'Enter a number between 1 and ' + maxQty + ':',
-      maxQty
-    );
-    
-    if (input === null) return;
-    
-    const qty = parseFloat(input);
-    if (isNaN(qty) || qty <= 0) {
-      showToast('Invalid quantity');
-      return;
-    }
-    if (qty > maxQty) {
-      showToast('Cannot exceed ' + maxQty);
-      return;
-    }
-    
-    if (!confirm('Mark ' + qty + ' ' + unit + ' as DISCARDED (waste)?\n\nThis action will be tracked for waste analytics.')) return;
-    
-    try {
-      const r = await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'markDiscarded',
-          itemId: itemId,
-          userName: userFullName,
-          quantity: qty
-        })
-      });
-      const d = await r.json();
-      if (d.success) {
-        if (d.remaining === 0) {
-          showToast('🗑️ Fully discarded');
-          allInventory = allInventory.filter(i => i.item_id !== itemId);
-        } else {
-          showToast('🗑️ ' + qty + ' discarded · ' + d.remaining + ' remaining');
-          item.quantity = d.remaining;
-        }
-        renderStocktake();
-      } else {
-        showToast('Error: ' + (d.error || 'unknown'));
-      }
-    } catch (e) {
-      showToast('Failed to update');
-    }
+    } catch (e) { showToast('Failed'); }
   }
   
   function renderPickToOpen() {
     const filter = document.getElementById('pickToOpenFilter').value;
-    const searchQuery = (document.getElementById('pickToOpenSearch').value || '').toLowerCase().trim();
-    
-    let filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
-    
-    if (searchQuery) {
-      filtered = filtered.filter(i => 
-        (i.product_name || '').toLowerCase().includes(searchQuery) ||
-        (i.location_name || '').toLowerCase().includes(searchQuery)
-      );
-    }
-    
+    const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
     const sorted = [...filtered].sort((a, b) => a.days_to_expiry - b.days_to_expiry);
-    
-    const bestChoiceIds = new Set();
-    const localPickIds = new Set();
-    
-    const byProduct = {};
-    sorted.forEach(item => {
-      if (!byProduct[item.product_id]) byProduct[item.product_id] = [];
-      byProduct[item.product_id].push(item);
-    });
-    
-    Object.keys(byProduct).forEach(productId => {
-      const items = byProduct[productId];
-      if (items.length < 2) return;
-      
-      const globalEarliest = items[0];
-      bestChoiceIds.add(globalEarliest.item_id);
-      
-      const seenLocations = new Set();
-      seenLocations.add(globalEarliest.location_id);
-      
-      items.forEach(item => {
-        if (seenLocations.has(item.location_id)) return;
-        seenLocations.add(item.location_id);
-        localPickIds.add(item.item_id);
-      });
-    });
-    
-    const countLabel = searchQuery 
-      ? sorted.length + ' matches — sorted by expiry (earliest first)'
-      : sorted.length + ' items — sorted by expiry (earliest first)';
-    document.getElementById('pickToOpenCount').textContent = countLabel;
-    
-    document.getElementById('pickToOpenList').innerHTML = sorted.map(i => {
-      let badge = '';
-      if (bestChoiceIds.has(i.item_id)) {
-        badge = '<span class="fefo-badge fefo-badge-best">🏆 BEST CHOICE</span>';
-      } else if (localPickIds.has(i.item_id)) {
-        badge = '<span class="fefo-badge fefo-badge-local">✅ LOCAL PICK</span>';
-      }
-      return `
-        <div class="product-item" onclick="chooseItemToOpen('${i.item_id}')">
-          <div class="product-name">${escapeHtml(i.product_name)}${badge}</div>
-          <div class="product-id">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
-          <div class="pick-item-expiry ${expiryClass(i.days_to_expiry)}">${expiryLabel(i)}</div>
-        </div>
-      `;
-    }).join('') || '<div class="empty-state">No matches</div>';
+    document.getElementById('pickToOpenCount').textContent = sorted.length + ' items — earliest expiry first';
+    document.getElementById('pickToOpenList').innerHTML = sorted.map(i => 
+      '<div class="product-item" onclick="chooseItemToOpen(\'' + i.item_id + '\')">' +
+        '<div class="product-name">' + escapeHtml(i.product_name) + '</div>' +
+        '<div class="product-id">' + i.quantity + ' ' + (i.unit || '') + ' · ' + escapeHtml(i.location_name) + '</div>' +
+        '<div class="inv-item-expiry ' + expiryClass(i.days_to_expiry) + '" style="margin-top:4px;">' + expiryLabel(i) + '</div>' +
+      '</div>'
+    ).join('') || '<div class="empty-state">No items in inventory</div>';
   }
   
   async function chooseItemToOpen(itemId) {
@@ -916,16 +753,11 @@
     document.getElementById('openFormQuantity').max = itemToOpen.quantity;
     document.getElementById('openFormQuantity').value = 1;
     document.getElementById('openFormExpiry').value = '';
-    
-    if (allLocations.length === 0) {
-      await loadLocations();
-    }
-    
+    if (allLocations.length === 0) { await loadLocations(); }
     const sel = document.getElementById('openFormLocationSelect');
     sel.innerHTML = allLocations.map(l => 
-      `<option value="${l.location_id}" ${l.location_id === itemToOpen.location_id ? 'selected' : ''}>${escapeHtml(l.name)}</option>`
+      '<option value="' + l.location_id + '"' + (l.location_id === itemToOpen.location_id ? ' selected' : '') + '>' + escapeHtml(l.name) + '</option>'
     ).join('');
-    
     showScreen('openForm');
   }
   
@@ -933,13 +765,11 @@
     const quantity = parseInt(document.getElementById('openFormQuantity').value);
     const newExpiry = document.getElementById('openFormExpiry').value;
     const openedLocationId = document.getElementById('openFormLocationSelect').value;
-    
     if (!itemToOpen) return showToast('No item selected');
     if (!quantity || quantity <= 0) return showToast('Enter valid quantity');
     if (quantity > itemToOpen.quantity) return showToast('Cannot exceed ' + itemToOpen.quantity);
     if (!newExpiry) return showToast('Enter new expiry date');
     if (!openedLocationId) return showToast('Select a pantry');
-    
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
@@ -961,9 +791,7 @@
       } else {
         showToast('Error: ' + (d.error || 'unknown'));
       }
-    } catch (e) {
-      showToast('Failed to open item');
-    }
+    } catch (e) { showToast('Failed to open item'); }
   }
   
   function expiryClass(days) {
@@ -984,9 +812,7 @@
     const category = document.getElementById('newProductCategory').value.trim();
     const unit = document.getElementById('newProductUnit').value;
     const shelfLife = document.getElementById('newProductShelfLife').value;
-    
     if (!name) return showToast('Product name is required');
-    
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
@@ -1012,9 +838,7 @@
       } else {
         showToast('Error: ' + (d.error || 'unknown'));
       }
-    } catch (e) {
-      showToast('Failed');
-    }
+    } catch (e) { showToast('Failed'); }
   }
   
   function showToast(msg) {
@@ -1022,9 +846,34 @@
     t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2000);
   }
+  
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
+  
+  // Attach search listeners AFTER DOM is ready (defensive)
+  window.addEventListener('load', function() {
+    const ps = document.getElementById('productSearch');
+    if (ps) ps.addEventListener('input', function(e) {
+      const q = e.target.value.toLowerCase().trim();
+      const filtered = q ? allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)) : allProducts;
+      renderProductList(filtered);
+    });
+    
+    const ds = document.getElementById('deliverySearch');
+    if (ds) ds.addEventListener('input', function(e) {
+      const q = e.target.value.toLowerCase().trim();
+      const results = document.getElementById('deliverySearchResults');
+      if (!q) { results.innerHTML = ''; return; }
+      const filtered = allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)).slice(0, 20);
+      results.innerHTML = filtered.map(p => 
+        '<div class="product-item" onclick="pickProduct(\'' + p.product_id + '\')">' +
+          '<div class="product-id">' + p.product_id + '</div>' +
+          '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
+        '</div>'
+      ).join('') || '<div class="empty-state">No matches</div>';
+    });
+  });
 </script>
 </body>
 </html>
