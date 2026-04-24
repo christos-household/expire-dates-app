@@ -66,8 +66,6 @@
     }
     .fefo-badge {
       display: inline-block;
-      background: #D4A24C;
-      color: #fff;
       font-size: 10px;
       font-weight: 700;
       padding: 2px 8px;
@@ -75,6 +73,14 @@
       margin-left: 8px;
       letter-spacing: 0.5px;
       vertical-align: middle;
+      color: #fff;
+    }
+    .fefo-badge-best {
+      background: #D4A24C;
+    }
+    .fefo-badge-local {
+      background: #27ae60;
+    }
     }
     .pick-item-expiry {
       font-size: 12px;
@@ -866,18 +872,36 @@
     // Sort by days_to_expiry (earliest first — FEFO)
     const sorted = [...filtered].sort((a, b) => a.days_to_expiry - b.days_to_expiry);
     
-    // Find the "open first" item per product+location group
-    const firstToOpenIds = new Set();
-    const seen = {};
+    // Compute 2-tier badges
+    const bestChoiceIds = new Set();   // 🏆 — global earliest per product (across all pantries)
+    const localPickIds = new Set();    // ✅ — earliest per product+pantry (but NOT the global earliest)
+    
+    // Group by product_id
+    const byProduct = {};
     sorted.forEach(item => {
-      const key = item.product_id + '|' + item.location_id;
-      if (!seen[key]) {
-        seen[key] = true;
-        const count = sorted.filter(x => x.product_id === item.product_id && x.location_id === item.location_id).length;
-        if (count > 1) {
-          firstToOpenIds.add(item.item_id);
-        }
-      }
+      if (!byProduct[item.product_id]) byProduct[item.product_id] = [];
+      byProduct[item.product_id].push(item);
+    });
+    
+    Object.keys(byProduct).forEach(productId => {
+      const items = byProduct[productId];
+      
+      // Only add badges if this product has multiple batches
+      if (items.length < 2) return;
+      
+      // Global earliest (🏆)
+      const globalEarliest = items[0]; // already sorted
+      bestChoiceIds.add(globalEarliest.item_id);
+      
+      // Per-location earliest (✅) — excluding the global earliest's pantry
+      const seenLocations = new Set();
+      seenLocations.add(globalEarliest.location_id);
+      
+      items.forEach(item => {
+        if (seenLocations.has(item.location_id)) return;
+        seenLocations.add(item.location_id);
+        localPickIds.add(item.item_id);
+      });
     });
     
     const countLabel = searchQuery 
@@ -886,7 +910,12 @@
     document.getElementById('pickToOpenCount').textContent = countLabel;
     
     document.getElementById('pickToOpenList').innerHTML = sorted.map(i => {
-      const badge = firstToOpenIds.has(i.item_id) ? '<span class="fefo-badge">🏆 OPEN FIRST</span>' : '';
+      let badge = '';
+      if (bestChoiceIds.has(i.item_id)) {
+        badge = '<span class="fefo-badge fefo-badge-best">🏆 BEST CHOICE</span>';
+      } else if (localPickIds.has(i.item_id)) {
+        badge = '<span class="fefo-badge fefo-badge-local">✅ LOCAL PICK</span>';
+      }
       return `
         <div class="product-item" onclick="chooseItemToOpen('${i.item_id}')">
           <div class="product-name">${escapeHtml(i.product_name)}${badge}</div>
