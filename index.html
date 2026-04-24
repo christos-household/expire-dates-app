@@ -59,7 +59,6 @@
       background: #e74c3c;
       color: #fff;
     }
-    }
     .stocktake-actions {
       display: flex;
       gap: 6px;
@@ -80,7 +79,6 @@
     }
     .fefo-badge-local {
       background: #27ae60;
-    }
     }
     .pick-item-expiry {
       font-size: 12px;
@@ -407,7 +405,6 @@
   let itemToOpen = null;
   let isUserAdmin = false;
   
-  // ---- Role check on load ----
   async function checkUserRole() {
     if (!userId) return;
     try {
@@ -421,7 +418,6 @@
   }
   checkUserRole();
   
-  // ---- Navigation ----
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-' + name).classList.add('active');
@@ -460,7 +456,6 @@
     showScreen('home');
   }
   
-  // ---- Data loading ----
   async function loadProducts() {
     try {
       const r = await fetch(API_URL + '?action=getProducts');
@@ -515,7 +510,6 @@
     }
   }
   
-  // ---- Products Screen ----
   function renderProductList(products) {
     document.getElementById('productCount').textContent = products.length + ' products';
     const html = products.map(p => `
@@ -535,7 +529,6 @@
     renderPickToOpen();
   });
   
-  // ---- New Delivery ----
   document.getElementById('deliverySearch').addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
     const results = document.getElementById('deliverySearchResults');
@@ -650,7 +643,6 @@
     }
   }
   
-  // ---- Inventory Browser ----
   function renderInventory() {
     const filter = document.getElementById('inventoryLocationFilter').value;
     const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
@@ -668,7 +660,6 @@
     `).join('') || '<div class="empty-state">No items</div>';
   }
   
-  // ---- Stocktake ----
   function renderStocktake() {
     const filter = document.getElementById('stocktakeLocationFilter').value;
     const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
@@ -743,7 +734,6 @@
     }
   }
   
-  // ---- Opened Items (list + remove) ----
   function renderOpenedItems() {
     document.getElementById('openedItemsCount').textContent = allOpenedItems.length + ' opened items';
     document.getElementById('openedItemsList').innerHTML = allOpenedItems.map(i => `
@@ -854,14 +844,12 @@
     }
   }
   
-  // ---- Pick item from inventory to open ----
   function renderPickToOpen() {
     const filter = document.getElementById('pickToOpenFilter').value;
     const searchQuery = (document.getElementById('pickToOpenSearch').value || '').toLowerCase().trim();
     
     let filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
     
-    // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(i => 
         (i.product_name || '').toLowerCase().includes(searchQuery) ||
@@ -869,14 +857,11 @@
       );
     }
     
-    // Sort by days_to_expiry (earliest first — FEFO)
     const sorted = [...filtered].sort((a, b) => a.days_to_expiry - b.days_to_expiry);
     
-    // Compute 2-tier badges
-    const bestChoiceIds = new Set();   // 🏆 — global earliest per product (across all pantries)
-    const localPickIds = new Set();    // ✅ — earliest per product+pantry (but NOT the global earliest)
+    const bestChoiceIds = new Set();
+    const localPickIds = new Set();
     
-    // Group by product_id
     const byProduct = {};
     sorted.forEach(item => {
       if (!byProduct[item.product_id]) byProduct[item.product_id] = [];
@@ -885,15 +870,11 @@
     
     Object.keys(byProduct).forEach(productId => {
       const items = byProduct[productId];
-      
-      // Only add badges if this product has multiple batches
       if (items.length < 2) return;
       
-      // Global earliest (🏆)
-      const globalEarliest = items[0]; // already sorted
+      const globalEarliest = items[0];
       bestChoiceIds.add(globalEarliest.item_id);
       
-      // Per-location earliest (✅) — excluding the global earliest's pantry
       const seenLocations = new Set();
       seenLocations.add(globalEarliest.location_id);
       
@@ -936,7 +917,6 @@
     document.getElementById('openFormQuantity').value = 1;
     document.getElementById('openFormExpiry').value = '';
     
-    // Ensure locations are loaded before populating dropdown
     if (allLocations.length === 0) {
       await loadLocations();
     }
@@ -976,7 +956,7 @@
       if (d.success) {
         showToast('✓ ' + (d.message || 'Opened'));
         itemToOpen = null;
-        allInventory = []; // force reload next time
+        allInventory = [];
         setTimeout(() => showScreen('openedItems'), 1000);
       } else {
         showToast('Error: ' + (d.error || 'unknown'));
@@ -999,7 +979,6 @@
     return 'Expires in ' + d + ' days (' + item.expiry_date + ')';
   }
   
-  // ---- Add Product (admin) ----
   async function submitNewProduct() {
     const name = document.getElementById('newProductName').value.trim();
     const category = document.getElementById('newProductCategory').value.trim();
@@ -1038,7 +1017,6 @@
     }
   }
   
-  // ---- Utils ----
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
