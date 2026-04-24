@@ -525,9 +525,12 @@
     const filtered = q ? allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)) : allProducts;
     renderProductList(filtered);
   });
-  document.getElementById('pickToOpenSearch').addEventListener('input', () => {
-    renderPickToOpen();
-  });
+  const pickSearchEl = document.getElementById('pickToOpenSearch');
+  if (pickSearchEl) {
+    pickSearchEl.addEventListener('input', () => {
+      renderPickToOpen();
+    });
+  }
   
   document.getElementById('deliverySearch').addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
