@@ -62,6 +62,23 @@
       display: flex;
       gap: 6px;
     }
+    .fefo-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      letter-spacing: 0.5px;
+      vertical-align: middle;
+      color: #fff;
+    }
+    .fefo-badge-best {
+      background: #D4A24C;
+    }
+    .fefo-badge-local {
+      background: #27ae60;
+    }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .home-container { padding: 24px 16px; }
     .home-hello { margin-bottom: 24px; font-size: 15px; color: var(--tg-theme-hint-color, #888); }
@@ -745,17 +762,46 @@
     }
     
     const sorted = [...filtered].sort((a, b) => a.days_to_expiry - b.days_to_expiry);
+    
+    // Compute 2-tier badges
+    const bestChoiceIds = new Set();
+    const localPickIds = new Set();
+    const byProduct = {};
+    sorted.forEach(item => {
+      if (!byProduct[item.product_id]) byProduct[item.product_id] = [];
+      byProduct[item.product_id].push(item);
+    });
+    Object.keys(byProduct).forEach(productId => {
+      const items = byProduct[productId];
+      if (items.length < 2) return;
+      const globalEarliest = items[0];
+      bestChoiceIds.add(globalEarliest.item_id);
+      const seenLocations = new Set();
+      seenLocations.add(globalEarliest.location_id);
+      items.forEach(item => {
+        if (seenLocations.has(item.location_id)) return;
+        seenLocations.add(item.location_id);
+        localPickIds.add(item.item_id);
+      });
+    });
+    
     const countLabel = searchQuery 
       ? sorted.length + ' matches — earliest expiry first'
       : sorted.length + ' items — earliest expiry first';
     document.getElementById('pickToOpenCount').textContent = countLabel;
-    document.getElementById('pickToOpenList').innerHTML = sorted.map(i => 
-      '<div class="product-item" onclick="chooseItemToOpen(\'' + i.item_id + '\')">' +
-        '<div class="product-name">' + escapeHtml(i.product_name) + '</div>' +
+    document.getElementById('pickToOpenList').innerHTML = sorted.map(i => {
+      let badge = '';
+      if (bestChoiceIds.has(i.item_id)) {
+        badge = '<span class="fefo-badge fefo-badge-best">🏆 BEST CHOICE</span>';
+      } else if (localPickIds.has(i.item_id)) {
+        badge = '<span class="fefo-badge fefo-badge-local">✅ LOCAL PICK</span>';
+      }
+      return '<div class="product-item" onclick="chooseItemToOpen(\'' + i.item_id + '\')">' +
+        '<div class="product-name">' + escapeHtml(i.product_name) + badge + '</div>' +
         '<div class="product-id">' + i.quantity + ' ' + (i.unit || '') + ' · ' + escapeHtml(i.location_name) + '</div>' +
         '<div class="inv-item-expiry ' + expiryClass(i.days_to_expiry) + '" style="margin-top:4px;">' + expiryLabel(i) + '</div>' +
-      '</div>'
-    ).join('') || '<div class="empty-state">No matches</div>';
+      '</div>';
+    }).join('') || '<div class="empty-state">No matches</div>';
   }
   
   async function chooseItemToOpen(itemId) {
