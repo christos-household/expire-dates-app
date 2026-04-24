@@ -520,11 +520,14 @@
     `).join('');
     document.getElementById('productList').innerHTML = html || '<div class="empty-state">No matches</div>';
   }
-  document.getElementById('productSearch').addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase().trim();
-    const filtered = q ? allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)) : allProducts;
-    renderProductList(filtered);
-  });
+  const productSearchEl = document.getElementById('productSearch');
+  if (productSearchEl) {
+    productSearchEl.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const filtered = q ? allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)) : allProducts;
+      renderProductList(filtered);
+    });
+  }
   const pickSearchEl = document.getElementById('pickToOpenSearch');
   if (pickSearchEl) {
     pickSearchEl.addEventListener('input', () => {
@@ -532,18 +535,21 @@
     });
   }
   
-  document.getElementById('deliverySearch').addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase().trim();
-    const results = document.getElementById('deliverySearchResults');
-    if (!q) { results.innerHTML = ''; return; }
-    const filtered = allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)).slice(0, 20);
-    results.innerHTML = filtered.map(p => `
-      <div class="product-item" onclick="pickProduct('${p.product_id}')">
-        <div class="product-id">${p.product_id}</div>
-        <div class="product-name">${escapeHtml(p.name)}</div>
-      </div>
-    `).join('') || '<div class="empty-state">No matches</div>';
-  });
+  const deliverySearchEl = document.getElementById('deliverySearch');
+  if (deliverySearchEl) {
+    deliverySearchEl.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const results = document.getElementById('deliverySearchResults');
+      if (!q) { results.innerHTML = ''; return; }
+      const filtered = allProducts.filter(p => p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q)).slice(0, 20);
+      results.innerHTML = filtered.map(p => `
+        <div class="product-item" onclick="pickProduct('${p.product_id}')">
+          <div class="product-id">${p.product_id}</div>
+          <div class="product-name">${escapeHtml(p.name)}</div>
+        </div>
+      `).join('') || '<div class="empty-state">No matches</div>';
+    });
+  }
   
   function pickProduct(productId) {
     pickedProduct = allProducts.find(p => p.product_id === productId);
