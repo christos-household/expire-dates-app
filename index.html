@@ -277,6 +277,7 @@
     <h1>Select item to open</h1>
   </div>
   <div class="filter-bar">
+    <input type="text" class="search-box" id="pickToOpenSearch" placeholder="🔍 Search by product name..." style="margin-bottom: 8px;">
     <select class="form-select" id="pickToOpenFilter" onchange="renderPickToOpen()">
       <option value="">All locations</option>
     </select>
@@ -731,16 +732,30 @@
   
   function renderPickToOpen() {
     const filter = document.getElementById('pickToOpenFilter').value;
-    const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
+    const searchEl = document.getElementById('pickToOpenSearch');
+    const searchQuery = searchEl ? (searchEl.value || '').toLowerCase().trim() : '';
+    
+    let filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
+    
+    if (searchQuery) {
+      filtered = filtered.filter(i => 
+        (i.product_name || '').toLowerCase().includes(searchQuery) ||
+        (i.location_name || '').toLowerCase().includes(searchQuery)
+      );
+    }
+    
     const sorted = [...filtered].sort((a, b) => a.days_to_expiry - b.days_to_expiry);
-    document.getElementById('pickToOpenCount').textContent = sorted.length + ' items — earliest expiry first';
+    const countLabel = searchQuery 
+      ? sorted.length + ' matches — earliest expiry first'
+      : sorted.length + ' items — earliest expiry first';
+    document.getElementById('pickToOpenCount').textContent = countLabel;
     document.getElementById('pickToOpenList').innerHTML = sorted.map(i => 
       '<div class="product-item" onclick="chooseItemToOpen(\'' + i.item_id + '\')">' +
         '<div class="product-name">' + escapeHtml(i.product_name) + '</div>' +
         '<div class="product-id">' + i.quantity + ' ' + (i.unit || '') + ' · ' + escapeHtml(i.location_name) + '</div>' +
         '<div class="inv-item-expiry ' + expiryClass(i.days_to_expiry) + '" style="margin-top:4px;">' + expiryLabel(i) + '</div>' +
       '</div>'
-    ).join('') || '<div class="empty-state">No items in inventory</div>';
+    ).join('') || '<div class="empty-state">No matches</div>';
   }
   
   async function chooseItemToOpen(itemId) {
@@ -871,6 +886,11 @@
           '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
         '</div>'
       ).join('') || '<div class="empty-state">No matches</div>';
+    });
+    
+    const pts = document.getElementById('pickToOpenSearch');
+    if (pts) pts.addEventListener('input', function() {
+      renderPickToOpen();
     });
   });
 </script>
