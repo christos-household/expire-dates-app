@@ -64,6 +64,23 @@
       display: flex;
       gap: 6px;
     }
+    .fefo-badge {
+      display: inline-block;
+      background: #D4A24C;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      letter-spacing: 0.5px;
+      vertical-align: middle;
+    }
+    .pick-item-expiry {
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 4px;
+    }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .home-container { padding: 24px 16px; }
     .home-hello { margin-bottom: 24px; font-size: 15px; color: var(--tg-theme-hint-color, #888); }
@@ -831,13 +848,37 @@
   function renderPickToOpen() {
     const filter = document.getElementById('pickToOpenFilter').value;
     const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
-    document.getElementById('pickToOpenCount').textContent = filtered.length + ' items — tap to open';
-    document.getElementById('pickToOpenList').innerHTML = filtered.map(i => `
-      <div class="product-item" onclick="chooseItemToOpen('${i.item_id}')">
-        <div class="product-name">${escapeHtml(i.product_name)}</div>
-        <div class="product-id">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
-      </div>
-    `).join('') || '<div class="empty-state">No items in inventory</div>';
+    
+    // Sort by days_to_expiry (earliest first — FEFO)
+    const sorted = [...filtered].sort((a, b) => a.days_to_expiry - b.days_to_expiry);
+    
+    // Find the "open first" item per product+location group
+    // (the one with earliest expiry among duplicates)
+    const firstToOpenIds = new Set();
+    const seen = {};
+    sorted.forEach(item => {
+      const key = item.product_id + '|' + item.location_id;
+      if (!seen[key]) {
+        seen[key] = true;
+        // Check if there are actually multiple batches of this product+location
+        const count = sorted.filter(x => x.product_id === item.product_id && x.location_id === item.location_id).length;
+        if (count > 1) {
+          firstToOpenIds.add(item.item_id);
+        }
+      }
+    });
+    
+    document.getElementById('pickToOpenCount').textContent = sorted.length + ' items — sorted by expiry (earliest first)';
+    document.getElementById('pickToOpenList').innerHTML = sorted.map(i => {
+      const badge = firstToOpenIds.has(i.item_id) ? '<span class="fefo-badge">🏆 OPEN FIRST</span>' : '';
+      return `
+        <div class="product-item" onclick="chooseItemToOpen('${i.item_id}')">
+          <div class="product-name">${escapeHtml(i.product_name)}${badge}</div>
+          <div class="product-id">${i.quantity} ${i.unit || ''} · ${escapeHtml(i.location_name)}</div>
+          <div class="pick-item-expiry ${expiryClass(i.days_to_expiry)}">${expiryLabel(i)}</div>
+        </div>
+      `;
+    }).join('') || '<div class="empty-state">No items in inventory</div>';
   }
   
   async function chooseItemToOpen(itemId) {
