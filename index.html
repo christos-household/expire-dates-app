@@ -187,6 +187,17 @@
       cursor: pointer;
       font-weight: 500;
     }
+    .btn-pdf {
+      background: #1B4332;
+      color: #fff;
+      flex: 1;
+      padding: 10px;
+      font-size: 13px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
     .selection-bar {
       position: fixed;
       bottom: 0;
@@ -337,8 +348,9 @@
     </select>
   </div>
   <div class="admin-actions" id="adminActionsBar" style="display: none;">
-    <button class="btn-5stars" onclick="enterSelectionMode('5stars')">🌟 Send to 5-Stars</button>
-    <button class="btn-wh" onclick="enterSelectionMode('wh')">📦 Return to WH</button>
+    <button class="btn-5stars" onclick="enterSelectionMode('5stars')">🌟 5-Stars</button>
+    <button class="btn-wh" onclick="enterSelectionMode('wh')">📦 WH</button>
+    <button class="btn-pdf" onclick="exportInventoryPDF()">📄 PDF</button>
   </div>
   <div class="count-info" id="inventoryCount">Loading...</div>
   <div id="inventoryList"></div>
@@ -1134,6 +1146,31 @@
       showToast('Transfer failed');
       btn.disabled = false;
       btn.textContent = 'Confirm';
+    }
+  }
+
+  async function exportInventoryPDF() {
+    if (!confirm('Generate Inventory PDF and send to Admins group?\n\nThis takes ~10 seconds.')) return;
+    
+    showToast('⏳ Generating PDF... please wait');
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'generateInventoryPDF',
+          telegramId: userId,
+          userName: userFullName
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✅ PDF sent to Admins group (' + d.items_count + ' items)');
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) {
+      showToast('Failed to generate PDF');
     }
   }
   
