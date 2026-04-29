@@ -159,6 +159,83 @@
       border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
     }
     .empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #888); }
+    .admin-actions {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
+    }
+    .btn-5stars {
+      background: #d4a24c;
+      color: #fff;
+      flex: 1;
+      padding: 10px;
+      font-size: 13px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-wh {
+      background: #52796f;
+      color: #fff;
+      flex: 1;
+      padding: 10px;
+      font-size: 13px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .selection-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 16px;
+      background: var(--tg-theme-bg-color, #fff);
+      border-top: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      display: none;
+      z-index: 100;
+    }
+    .selection-info {
+      font-size: 13px;
+      color: var(--tg-theme-hint-color, #888);
+      margin-bottom: 8px;
+    }
+    .selection-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-confirm-transfer {
+      flex: 1;
+      padding: 12px;
+      background: #1B4332;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-cancel-transfer {
+      padding: 12px 20px;
+      background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+      color: var(--tg-theme-text-color, #000);
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .item-checkbox {
+      width: 20px;
+      height: 20px;
+      margin-right: 12px;
+      cursor: pointer;
+    }
+    .inv-item.selectable { cursor: pointer; }
+    .inv-item.selected { background: rgba(212, 162, 76, 0.1); }
     .toast {
       position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
       padding: 12px 24px; background: #333; color: #fff;
@@ -258,6 +335,10 @@
     <select class="form-select" id="inventoryLocationFilter" onchange="renderInventory()">
       <option value="">All locations</option>
     </select>
+  </div>
+  <div class="admin-actions" id="adminActionsBar" style="display: none;">
+    <button class="btn-5stars" onclick="enterSelectionMode('5stars')">🌟 Send to 5-Stars</button>
+    <button class="btn-wh" onclick="enterSelectionMode('wh')">📦 Return to WH</button>
   </div>
   <div class="count-info" id="inventoryCount">Loading...</div>
   <div id="inventoryList"></div>
@@ -379,6 +460,14 @@
   </div>
 </div>
 
+<div class="selection-bar" id="selectionBar">
+  <div class="selection-info" id="selectionInfo">0 items selected</div>
+  <div class="selection-buttons">
+    <button class="btn-cancel-transfer" onclick="exitSelectionMode()">Cancel</button>
+    <button class="btn-confirm-transfer" id="confirmTransferBtn" onclick="confirmTransfer()">Confirm</button>
+  </div>
+</div>
+  
 <div class="toast" id="toast"></div>
 
 <script>
@@ -412,6 +501,7 @@
       isUserAdmin = d.isAdmin === true;
       if (isUserAdmin) {
         document.getElementById('adminSection').style.display = 'block';
+        document.getElementById('adminActionsBar').style.display = 'flex';
       }
     } catch (e) {}
   }
@@ -626,15 +716,28 @@
     const filter = document.getElementById('inventoryLocationFilter').value;
     const filtered = filter ? allInventory.filter(i => i.location_id === filter) : allInventory;
     document.getElementById('inventoryCount').textContent = filtered.length + ' active items';
-    document.getElementById('inventoryList').innerHTML = filtered.map(i => 
-      '<div class="inv-item">' +
+    
+    const inSelectionMode = selectionMode !== null;
+    
+    document.getElementById('inventoryList').innerHTML = filtered.map(i => {
+      const isSelected = selectedItems.has(i.item_id);
+      const checkboxHtml = inSelectionMode 
+        ? '<input type="checkbox" class="item-checkbox" ' + (isSelected ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleItemSelection(\'' + i.item_id + '\')">'
+        : '';
+      const itemClass = 'inv-item' + (inSelectionMode ? ' selectable' : '') + (isSelected ? ' selected' : '');
+      const onClickAttr = inSelectionMode 
+        ? 'onclick="toggleItemSelection(\'' + i.item_id + '\')"'
+        : '';
+      
+      return '<div class="' + itemClass + '" ' + onClickAttr + '>' +
+        checkboxHtml +
         '<div class="inv-item-info">' +
           '<div class="inv-item-name">' + escapeHtml(i.product_name) + '</div>' +
           '<div class="inv-item-meta">' + i.quantity + ' ' + (i.unit || '') + ' · ' + escapeHtml(i.location_name) + '</div>' +
           '<div class="inv-item-expiry ' + expiryClass(i.days_to_expiry) + '">' + expiryLabel(i) + '</div>' +
         '</div>' +
-      '</div>'
-    ).join('') || '<div class="empty-state">No items</div>';
+      '</div>';
+    }).join('') || '<div class="empty-state">No items</div>';
   }
   
   function renderStocktake() {
@@ -946,6 +1049,91 @@
       }
     } catch (e) {
       showToast('Failed to add location');
+    }
+  }
+
+  // ============================================================
+  // BULK TRANSFER (Send to 5-Stars / Return to WH) — admin only
+  // ============================================================
+  let selectionMode = null; // null, '5stars', or 'wh'
+  let selectedItems = new Set();
+  
+  function enterSelectionMode(mode) {
+    selectionMode = mode;
+    selectedItems.clear();
+    document.getElementById('adminActionsBar').style.display = 'none';
+    document.getElementById('selectionBar').style.display = 'block';
+    updateSelectionInfo();
+    renderInventory();
+  }
+  
+  function exitSelectionMode() {
+    selectionMode = null;
+    selectedItems.clear();
+    document.getElementById('selectionBar').style.display = 'none';
+    if (isUserAdmin) {
+      document.getElementById('adminActionsBar').style.display = 'flex';
+    }
+    renderInventory();
+  }
+  
+  function toggleItemSelection(itemId) {
+    if (selectedItems.has(itemId)) {
+      selectedItems.delete(itemId);
+    } else {
+      selectedItems.add(itemId);
+    }
+    updateSelectionInfo();
+    renderInventory();
+  }
+  
+  function updateSelectionInfo() {
+    const count = selectedItems.size;
+    const label = selectionMode === '5stars' ? '5-Stars' : 'Warehouse';
+    document.getElementById('selectionInfo').textContent = 
+      count + ' items selected → ' + label;
+    document.getElementById('confirmTransferBtn').disabled = count === 0;
+  }
+  
+  async function confirmTransfer() {
+    const count = selectedItems.size;
+    if (count === 0) return showToast('No items selected');
+    
+    const reason = selectionMode === '5stars' ? 'transferred_5stars' : 'returned_warehouse';
+    const label = selectionMode === '5stars' ? '5-Stars Department' : 'Warehouse';
+    
+    if (!confirm('Transfer ' + count + ' items to ' + label + '?\n\nThis cannot be undone.')) return;
+    
+    const btn = document.getElementById('confirmTransferBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'markRemoved',
+          itemIds: Array.from(selectedItems),
+          reason: reason,
+          userName: userFullName
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✓ ' + d.updated_count + ' items transferred to ' + label);
+        // Remove transferred items from local inventory
+        const transferredIds = new Set(Array.from(selectedItems));
+        allInventory = allInventory.filter(i => !transferredIds.has(i.item_id));
+        exitSelectionMode();
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+        btn.disabled = false;
+        btn.textContent = 'Confirm';
+      }
+    } catch (e) {
+      showToast('Transfer failed');
+      btn.disabled = false;
+      btn.textContent = 'Confirm';
     }
   }
   
