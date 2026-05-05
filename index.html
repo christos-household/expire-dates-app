@@ -1150,7 +1150,8 @@
           openedLocationId: openedLocationId,
           userName: userFullName,
           projectId: currentProjectId || 'ADF'
-        });
+        })
+      });
       const d = await r.json();
       if (d.success) {
         showToast('✓ ' + (d.message || 'Opened'));
