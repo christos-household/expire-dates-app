@@ -883,7 +883,8 @@
             product_id: i.product_id, location_id: i.location_id,
             quantity: i.quantity, unit: i.unit, expiry_date: i.expiry_date
           }))
-        });
+            })
+      });
       const d = await r.json();
       if (d.success) {
         showToast('✅ ' + d.items_count + ' items saved');
