@@ -580,6 +580,13 @@
   let itemToOpen = null;
   let isUserAdmin = false;
   
+  // Boot project picker once userId is ready
+  if (userId) {
+    loadUserProjects();
+  } else {
+    console.warn('userId not available — project picker skipped');
+  }
+  
   async function checkUserRole() {
     if (!userId) return;
     try {
@@ -593,7 +600,6 @@
     } catch (e) {}
   }
   checkUserRole();
-  loadUserProjects();
   // ============== PROJECT PICKER LOGIC ==============
   
   async function loadUserProjects() {
