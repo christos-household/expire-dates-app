@@ -341,6 +341,7 @@
       <div class="section-title">Admin</div>
       <button class="btn btn-admin" onclick="showScreen('addProduct')">➕ Add New Product</button>
       <button class="btn btn-admin" onclick="showScreen('addLocation')">📍 Add New Location</button>
+      <button class="btn btn-admin" onclick="showScreen('manageTeam')">👥 Manage Team</button>
     </div>
   </div>
 </div>
@@ -541,6 +542,71 @@
     <button class="btn btn-admin" onclick="submitNewLocation()">✅ Add Location</button>
   </div>
 </div>
+  <!-- ============== MANAGE TEAM SCREEN ============== -->
+<div class="screen" id="screen-manageTeam">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('home')">← Back</button>
+    <h1>👥 Manage Team</h1>
+  </div>
+  <div class="form-container">
+    <div id="manageTeamProjectInfo" style="font-size: 13px; color: var(--tg-theme-hint-color, #888); margin-bottom: 12px;"></div>
+    
+    <div id="superAdminTools" style="display: none; margin-bottom: 16px;">
+      <button class="btn btn-admin" onclick="showAddNewUserModal()">➕ Create New User</button>
+    </div>
+    
+    <div id="manageTeamSearch" style="margin-bottom: 12px;">
+      <input type="text" class="form-input" id="teamSearch" placeholder="🔍 Search by name or ID..." oninput="filterTeamList()">
+    </div>
+    
+    <div id="manageTeamCount" style="font-size: 13px; color: var(--tg-theme-hint-color, #888); margin-bottom: 8px;">Loading...</div>
+    <div id="manageTeamList"></div>
+  </div>
+</div>
+
+<!-- ============== ADD EXISTING USER MODAL ============== -->
+<div class="screen" id="screen-addExistingUser">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('manageTeam')">← Back</button>
+    <h1>➕ Add User</h1>
+  </div>
+  <div class="form-container">
+    <p style="font-size: 13px; color: var(--tg-theme-hint-color, #888); margin-bottom: 12px;">Select a user from the system to add to this project:</p>
+    <input type="text" class="form-input" id="addUserSearch" placeholder="🔍 Search..." oninput="filterAddUserList()" style="margin-bottom: 12px;">
+    <div id="addUserList"></div>
+  </div>
+</div>
+
+<!-- ============== CREATE NEW USER MODAL (super admin only) ============== -->
+<div class="screen" id="screen-createUser">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('manageTeam')">← Back</button>
+    <h1>👤 Create New User</h1>
+  </div>
+  <div class="form-container">
+    <div class="form-group">
+      <label class="form-label">User ID *</label>
+      <input type="text" class="form-input" id="newUserIdField" placeholder="e.g., 1234">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Full Name *</label>
+      <input type="text" class="form-input" id="newUserNameField" placeholder="e.g., John Smith">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Role *</label>
+      <select class="form-select" id="newUserRoleField">
+        <option value="USER">USER (butler)</option>
+        <option value="ADMIN">ADMIN</option>
+      </select>
+    </div>
+    <div style="background: var(--tg-theme-secondary-bg-color, #f5f5f5); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; color: var(--tg-theme-hint-color, #888);">
+      ℹ️ This user will be added to the current project: <strong id="newUserTargetProject">—</strong>
+      <br><br>
+      ⚠️ After creation, the user must run <code>/register [user_id]</code> on Telegram to activate access.
+    </div>
+    <button class="btn btn-admin" onclick="submitNewUser()">✅ Create User</button>
+  </div>
+</div>
 
 <div class="selection-bar" id="selectionBar">
   <div class="selection-info" id="selectionInfo">0 items selected</div>
@@ -559,6 +625,9 @@
   let currentProjectName = null;
   let availableProjects = [];
   let isCurrentUserSuperAdmin = false;
+  // ============== MANAGE TEAM STATE ==============
+  let teamUsersList = [];
+  let allSystemUsers = [];
   
   const tg = window.Telegram.WebApp;
   tg.ready(); tg.expand();
@@ -714,6 +783,9 @@
     }
     if (name === 'openedItems') {
       loadOpenedItems();
+    }
+    if (name === 'manageTeam') {
+      loadTeamUsers();
     }
     if (name === 'pickToOpen') {
       if (allLocations.length === 0) loadLocations().then(() => populateLocationFilter('pickToOpenFilter'));
@@ -1352,6 +1424,195 @@
     } catch (e) {
       showToast('Failed to generate PDF');
     }
+  }
+
+// ============================================================
+  // MANAGE TEAM — Self-service user management
+  // ============================================================
+  
+  async function loadTeamUsers() {
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'getProjectUsers',
+          projectId: currentProjectId || 'ADF',
+          telegramId: userId
+        })
+      });
+      const d = await r.json();
+      if (!d.success) {
+        showToast('Error: ' + (d.error || 'unknown'));
+        document.getElementById('manageTeamCount').textContent = 'Failed to load';
+        return;
+      }
+      teamUsersList = d.users || [];
+      
+      // Show super admin tools if requester is super admin
+      document.getElementById('superAdminTools').style.display = d.requester_is_super ? 'block' : 'none';
+      document.getElementById('newUserTargetProject').textContent = currentProjectName || currentProjectId;
+      document.getElementById('manageTeamProjectInfo').textContent = 
+        '📍 Project: ' + (currentProjectName || currentProjectId) + ' · ' + d.count + ' members';
+      
+      renderTeamList(teamUsersList);
+    } catch (e) {
+      showToast('Failed to load team');
+      document.getElementById('manageTeamCount').textContent = 'Failed to load';
+    }
+  }
+  
+  function renderTeamList(users) {
+    document.getElementById('manageTeamCount').textContent = users.length + ' member' + (users.length !== 1 ? 's' : '');
+    
+    if (users.length === 0) {
+      document.getElementById('manageTeamList').innerHTML = '<div class="empty-state">No members</div>';
+      return;
+    }
+    
+    document.getElementById('manageTeamList').innerHTML = users.map(u => {
+      const badge = u.super_admin ? '<span style="background:#D4A24C;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;">SUPER</span>' : 
+                    u.role === 'ADMIN' ? '<span style="background:#1B4332;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;">ADMIN</span>' : '';
+      const regStatus = u.registered ? 
+        '<span style="color:#27ae60;font-size:11px;">✓ registered</span>' : 
+        '<span style="color:#e74c3c;font-size:11px;">⚠ not registered</span>';
+      return '<div class="inv-item" onclick="showUserActions(\'' + u.user_id + '\')" style="cursor:pointer;">' +
+        '<div class="inv-item-info">' +
+          '<div class="inv-item-name">' + escapeHtml(u.name) + badge + '</div>' +
+          '<div class="inv-item-meta">' + u.user_id + ' · ' + u.role + ' · ' + regStatus + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+  
+  function filterTeamList() {
+    const q = document.getElementById('teamSearch').value.toLowerCase().trim();
+    const filtered = q ? teamUsersList.filter(u => 
+      String(u.name).toLowerCase().includes(q) || 
+      String(u.user_id).toLowerCase().includes(q)
+    ) : teamUsersList;
+    renderTeamList(filtered);
+  }
+  
+  function showUserActions(userIdToManage) {
+    const user = teamUsersList.find(u => String(u.user_id) === String(userIdToManage));
+    if (!user) return;
+    
+    const isMe = String(user.telegram_id) === String(userId);
+    
+    if (isMe) {
+      showToast('You cannot manage your own account');
+      return;
+    }
+    
+    // Build action menu
+    const actions = [];
+    
+    if (isCurrentUserSuperAdmin) {
+      const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN';
+      actions.push({ label: '🔧 Change role to ' + newRole, action: () => doChangeRole(user.user_id, newRole, user.name) });
+    }
+    
+    actions.push({ label: '➖ Remove from project', action: () => doRemoveFromProject(user.user_id, user.name) });
+    
+    let menuText = 'Manage ' + user.name + ' (' + user.user_id + '):\n\n';
+    actions.forEach((a, i) => menuText += (i + 1) + '. ' + a.label + '\n');
+    menuText += '\nEnter number (1-' + actions.length + ') or Cancel:';
+    
+    const choice = prompt(menuText);
+    if (!choice) return;
+    
+    const idx = parseInt(choice) - 1;
+    if (idx >= 0 && idx < actions.length) {
+      actions[idx].action();
+    }
+  }
+  
+  async function doRemoveFromProject(targetUserId, targetName) {
+    if (!confirm('Remove ' + targetName + ' from ' + (currentProjectName || currentProjectId) + '?')) return;
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'removeUserFromProject',
+          userId: targetUserId,
+          projectId: currentProjectId || 'ADF',
+          telegramId: userId,
+          userName: userFullName
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✓ ' + d.message);
+        loadTeamUsers();
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) { showToast('Failed'); }
+  }
+  
+  async function doChangeRole(targetUserId, newRole, targetName) {
+    if (!confirm('Change ' + targetName + ' to ' + newRole + '?')) return;
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'changeUserRole',
+          userId: targetUserId,
+          newRole: newRole,
+          projectId: currentProjectId || 'ADF',
+          telegramId: userId,
+          userName: userFullName
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✓ ' + d.message);
+        loadTeamUsers();
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) { showToast('Failed'); }
+  }
+  
+  function showAddNewUserModal() {
+    document.getElementById('newUserIdField').value = '';
+    document.getElementById('newUserNameField').value = '';
+    document.getElementById('newUserRoleField').value = 'USER';
+    document.getElementById('newUserTargetProject').textContent = currentProjectName || currentProjectId;
+    showScreen('createUser');
+  }
+  
+  async function submitNewUser() {
+    const newUserId = document.getElementById('newUserIdField').value.trim();
+    const newName = document.getElementById('newUserNameField').value.trim();
+    const newRole = document.getElementById('newUserRoleField').value;
+    
+    if (!newUserId) return showToast('User ID required');
+    if (!newName) return showToast('Name required');
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'createNewUser',
+          newUserId: newUserId,
+          newUserName: newName,
+          newRole: newRole,
+          accessibleProjects: currentProjectId || 'ADF',
+          telegramId: userId,
+          userName: userFullName
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✓ ' + d.message);
+        setTimeout(() => showScreen('manageTeam'), 1500);
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) { showToast('Failed'); }
   }
   
   function showToast(msg) {
