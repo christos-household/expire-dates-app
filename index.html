@@ -1307,7 +1307,8 @@
           reason: reason,
           userName: userFullName,
           projectId: currentProjectId || 'ADF'
-        });
+        })
+      });
       const d = await r.json();
       if (d.success) {
         showToast('✓ ' + d.updated_count + ' items transferred to ' + label);
@@ -1340,7 +1341,8 @@
           telegramId: userId,
           userName: userFullName,
           projectId: currentProjectId || 'ADF'
-        });
+        })
+      });
       const d = await r.json();
       if (d.success) {
         showToast('✅ PDF sent to Admins group (' + d.items_count + ' items)');
