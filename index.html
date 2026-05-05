@@ -1225,7 +1225,8 @@
           userName: userFullName,
           projectId: currentProjectId || 'ADF',
           name: name
-        });
+        })
+      });
       const d = await r.json();
       if (d.success) {
         showToast('✅ ' + d.location_id + ' added: ' + d.name);
