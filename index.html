@@ -247,6 +247,54 @@
     }
     .inv-item.selectable { cursor: pointer; }
     .inv-item.selected { background: rgba(212, 162, 76, 0.1); }
+    /* Project Picker styles */
+    .picker-header { text-align: center; margin: 24px 0 32px; }
+    .picker-icon { font-size: 56px; margin-bottom: 12px; }
+    .picker-title { font-size: 24px; margin: 0 0 8px; color: var(--tg-theme-text-color, #1B4332); }
+    .picker-subtitle { font-size: 14px; color: var(--tg-theme-hint-color, #888); margin: 0 0 16px; }
+    .project-card {
+      background: var(--tg-theme-secondary-bg-color, #f7f7f7);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      padding: 20px 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .project-card:hover, .project-card:active {
+      border-color: #D4A24C;
+      transform: translateY(-1px);
+    }
+    .project-card-icon { font-size: 32px; }
+    .project-card-info { flex: 1; }
+    .project-card-name { font-size: 17px; font-weight: 600; color: var(--tg-theme-text-color, #1B4332); }
+    .project-card-id { font-size: 12px; color: var(--tg-theme-hint-color, #888); margin-top: 2px; }
+    .project-card-arrow { font-size: 20px; color: var(--tg-theme-hint-color, #ccc); }
+    .picker-warning {
+      background: #FFF8E1;
+      border-left: 3px solid #D4A24C;
+      padding: 12px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #5C4A1F;
+      margin-top: 24px;
+    }
+    .project-context-bar {
+      background: #1B4332;
+      color: #fff;
+      padding: 8px 16px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .project-context-bar .ctx-label { opacity: 0.7; font-size: 11px; }
+    .project-context-bar .ctx-name { font-weight: 600; }
+    .project-context-bar .ctx-switch { font-size: 12px; opacity: 0.9; }
     .toast {
       position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
       padding: 12px 24px; background: #333; color: #fff;
@@ -258,8 +306,30 @@
 </head>
 <body>
 
-<div class="screen active" id="screen-home">
+  <!-- ============== PROJECT PICKER (default screen) ============== -->
+<div class="screen active" id="screen-projectPicker">
   <div class="home-container">
+    <div class="picker-header">
+      <div class="picker-icon">🏢</div>
+      <h1 class="picker-title">Select Project</h1>
+      <p class="picker-subtitle">Choose which project you're working on right now.</p>
+    </div>
+    <div id="projectPickerList"></div>
+    <div class="picker-warning">
+      ⚠️ All actions you perform will be saved <strong>only</strong> to the project you select. Choose carefully.
+    </div>
+  </div>
+</div>
+  
+<div class="screen" id="screen-home">
+  <div class="home-container">
+    <div class="project-context-bar" id="projectContextBar" onclick="switchProject()" style="display: none;">
+      <div>
+        <div class="ctx-label">Working on</div>
+        <div class="ctx-name">—</div>
+      </div>
+      <div class="ctx-switch">Switch ›</div>
+    </div>
     <div class="home-hello">Hello, <strong id="userName">...</strong> 👋</div>
     <div class="section-title">Daily Tasks</div>
     <button class="btn" onclick="showScreen('newDelivery')">📦 New Delivery</button>
@@ -484,6 +554,11 @@
 
 <script>
   const API_URL = 'https://script.google.com/macros/s/AKfycbwhj6lHg84JLxQl41hB4luCFwn6zMP8cw9Azm8b4WjSmm0EQFzjYheEVZl69-HkO804bQ/exec';
+  // ============== MULTI-PROJECT STATE ==============
+  let currentProjectId = null;
+  let currentProjectName = null;
+  let availableProjects = [];
+  let isCurrentUserSuperAdmin = false;
   
   const tg = window.Telegram.WebApp;
   tg.ready(); tg.expand();
@@ -518,6 +593,100 @@
     } catch (e) {}
   }
   checkUserRole();
+  loadUserProjects();
+  // ============== PROJECT PICKER LOGIC ==============
+  
+  async function loadUserProjects() {
+    try {
+      const url = API_URL + '?action=getUserProjects&telegramId=' + encodeURIComponent(userId);
+      const r = await fetch(url);
+      const d = await r.json();
+      
+      if (!d.success) {
+        showToast('Failed to load projects');
+        return;
+      }
+      
+      availableProjects = d.projects || [];
+      isCurrentUserSuperAdmin = d.is_super_admin || false;
+      
+      if (availableProjects.length === 0) {
+        showToast('You have no project access. Contact admin.');
+        return;
+      }
+      
+      // Try to restore last picked project from session storage
+      const lastProject = sessionStorage.getItem('currentProjectId');
+      const lastTimestamp = parseInt(sessionStorage.getItem('currentProjectTimestamp') || '0');
+      const fourHoursAgo = Date.now() - (4 * 60 * 60 * 1000);
+      
+      // If 1 project, auto-select
+      if (availableProjects.length === 1) {
+        selectProject(availableProjects[0].project_id, availableProjects[0].name);
+        return;
+      }
+      
+      // If multiple, check session memory (within 4h)
+      if (lastProject && lastTimestamp > fourHoursAgo) {
+        const matched = availableProjects.find(p => p.project_id === lastProject);
+        if (matched) {
+          selectProject(matched.project_id, matched.name);
+          return;
+        }
+      }
+      
+      // Otherwise, show picker
+      renderProjectPicker();
+    } catch (err) {
+      console.error('loadUserProjects error', err);
+      showToast('Connection error');
+    }
+  }
+  
+  function renderProjectPicker() {
+    const container = document.getElementById('projectPickerList');
+    container.innerHTML = availableProjects.map(p => 
+      '<div class="project-card" onclick="selectProject(\'' + p.project_id + '\', \'' + (p.name || '').replace(/'/g, "\\'") + '\')">' +
+        '<div class="project-card-icon">📍</div>' +
+        '<div class="project-card-info">' +
+          '<div class="project-card-name">' + escapeHtml(p.name || p.project_id) + '</div>' +
+          '<div class="project-card-id">' + p.project_id + '</div>' +
+        '</div>' +
+        '<div class="project-card-arrow">›</div>' +
+      '</div>'
+    ).join('');
+    showScreen('projectPicker');
+  }
+  
+  function selectProject(projectId, projectName) {
+    currentProjectId = projectId;
+    currentProjectName = projectName;
+    sessionStorage.setItem('currentProjectId', projectId);
+    sessionStorage.setItem('currentProjectTimestamp', String(Date.now()));
+    updateProjectContextBar();
+    showScreen('home');
+  }
+  
+  function switchProject() {
+    if (availableProjects.length <= 1) {
+      showToast('You only have access to one project');
+      return;
+    }
+    sessionStorage.removeItem('currentProjectId');
+    sessionStorage.removeItem('currentProjectTimestamp');
+    renderProjectPicker();
+  }
+  
+  function updateProjectContextBar() {
+    const bar = document.getElementById('projectContextBar');
+    if (!bar) return;
+    if (currentProjectName) {
+      bar.querySelector('.ctx-name').textContent = currentProjectName;
+      bar.style.display = 'flex';
+    } else {
+      bar.style.display = 'none';
+    }
+  }
   
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -570,7 +739,7 @@
   
   async function loadLocations() {
     try {
-      const r = await fetch(API_URL + '?action=getLocations');
+      const r = await fetch(API_URL + '?action=getLocations&projectId=' + encodeURIComponent(currentProjectId || 'ADF'));
       const d = await r.json();
       allLocations = d.locations || [];
       const sel = document.getElementById('locationSelect');
@@ -590,7 +759,7 @@
   
   async function loadInventoryAndRender(screen) {
     try {
-      const r = await fetch(API_URL + '?action=getInventory');
+      const r = await fetch(API_URL + '?action=getInventory&projectId=' + encodeURIComponent(currentProjectId || 'ADF'));
       const d = await r.json();
       allInventory = d.items || [];
       if (screen === 'inventory') renderInventory();
@@ -605,7 +774,7 @@
   
   async function loadOpenedItems() {
     try {
-      const r = await fetch(API_URL + '?action=getOpenedItems');
+      const r = await fetch(API_URL + '?action=getOpenedItems&projectId=' + encodeURIComponent(currentProjectId || 'ADF'));
       const d = await r.json();
       allOpenedItems = d.items || [];
       renderOpenedItems();
@@ -703,12 +872,12 @@
           action: 'submitDelivery',
           userId: userId,
           userName: userFullName,
+          projectId: currentProjectId || 'ADF',
           items: deliveryItems.map(i => ({
             product_id: i.product_id, location_id: i.location_id,
             quantity: i.quantity, unit: i.unit, expiry_date: i.expiry_date
           }))
-        })
-      });
+        });
       const d = await r.json();
       if (d.success) {
         showToast('✅ ' + d.items_count + ' items saved');
@@ -784,7 +953,7 @@
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'markConsumed', itemId: itemId, userName: userFullName, quantity: qty })
+        body: JSON.stringify({ action: 'markConsumed', itemId: itemId, userName: userFullName, quantity: qty, projectId: currentProjectId || 'ADF' })
       });
       const d = await r.json();
       if (d.success) {
@@ -816,7 +985,7 @@
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'markDiscarded', itemId: itemId, userName: userFullName, quantity: qty })
+        body: JSON.stringify({ action: 'markDiscarded', itemId: itemId, userName: userFullName, quantity: qty, projectId: currentProjectId || 'ADF' })
       });
       const d = await r.json();
       if (d.success) {
@@ -867,7 +1036,7 @@
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'removeOpenedItem', itemId: itemId, userName: userFullName, status: 'consumed' })
+        body: JSON.stringify({ action: 'removeOpenedItem', itemId: itemId, userName: userFullName, status: 'consumed', projectId: currentProjectId || 'ADF' })
       });
       const d = await r.json();
       if (d.success) {
@@ -972,9 +1141,9 @@
           quantity: quantity,
           newExpiryDate: newExpiry,
           openedLocationId: openedLocationId,
-          userName: userFullName
-        })
-      });
+          userName: userFullName,
+          projectId: currentProjectId || 'ADF'
+        });
       const d = await r.json();
       if (d.success) {
         showToast('✓ ' + (d.message || 'Opened'));
@@ -1046,9 +1215,9 @@
           action: 'addLocation',
           telegramId: userId,
           userName: userFullName,
+          projectId: currentProjectId || 'ADF',
           name: name
-        })
-      });
+        });
       const d = await r.json();
       if (d.success) {
         showToast('✅ ' + d.location_id + ' added: ' + d.name);
@@ -1127,9 +1296,9 @@
           action: 'markRemoved',
           itemIds: Array.from(selectedItems),
           reason: reason,
-          userName: userFullName
-        })
-      });
+          userName: userFullName,
+          projectId: currentProjectId || 'ADF'
+        });
       const d = await r.json();
       if (d.success) {
         showToast('✓ ' + d.updated_count + ' items transferred to ' + label);
@@ -1160,9 +1329,9 @@
         body: JSON.stringify({
           action: 'generateInventoryPDF',
           telegramId: userId,
-          userName: userFullName
-        })
-      });
+          userName: userFullName,
+          projectId: currentProjectId || 'ADF'
+        });
       const d = await r.json();
       if (d.success) {
         showToast('✅ PDF sent to Admins group (' + d.items_count + ' items)');
