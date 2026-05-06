@@ -551,8 +551,12 @@
   <div class="form-container">
     <div id="manageTeamProjectInfo" style="font-size: 13px; color: var(--tg-theme-hint-color, #888); margin-bottom: 12px;"></div>
     
+    <div style="margin-bottom: 16px;">
+      <button class="btn btn-admin" onclick="showAddExistingUserScreen()">➕ Add Existing User</button>
+    </div>
+    
     <div id="superAdminTools" style="display: none; margin-bottom: 16px;">
-      <button class="btn btn-admin" onclick="showAddNewUserModal()">➕ Create New User</button>
+      <button class="btn btn-admin" onclick="showAddNewUserModal()">👤 Create New User</button>
     </div>
     
     <div id="manageTeamSearch" style="margin-bottom: 12px;">
@@ -1613,6 +1617,105 @@
         showToast('Error: ' + (d.error || 'unknown'));
       }
     } catch (e) { showToast('Failed'); }
+  }
+
+  // ============== ADD EXISTING USER FLOW ==============
+  
+  let addableUsersList = [];
+  
+  async function showAddExistingUserScreen() {
+    showScreen('addExistingUser');
+    document.getElementById('addUserList').innerHTML = '<div class="empty-state">Loading...</div>';
+    document.getElementById('addUserSearch').value = '';
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'getAddableUsers',
+          projectId: currentProjectId || 'ADF',
+          telegramId: userId
+        })
+      });
+      const d = await r.json();
+      
+      if (!d.success) {
+        showToast('Error: ' + (d.error || 'unknown'));
+        document.getElementById('addUserList').innerHTML = '<div class="empty-state">Failed to load</div>';
+        return;
+      }
+      
+      addableUsersList = d.users || [];
+      renderAddUserList(addableUsersList);
+    } catch (e) {
+      showToast('Failed to load users');
+      document.getElementById('addUserList').innerHTML = '<div class="empty-state">Failed to load</div>';
+    }
+  }
+  
+  function renderAddUserList(users) {
+    if (users.length === 0) {
+      document.getElementById('addUserList').innerHTML = '<div class="empty-state">No users available to add</div>';
+      return;
+    }
+    
+    document.getElementById('addUserList').innerHTML = 
+      '<div style="font-size:13px;color:#888;margin-bottom:8px;">' + users.length + ' user' + (users.length !== 1 ? 's' : '') + ' available</div>' +
+      users.map(u => {
+        const roleBadge = u.role === 'ADMIN' ? 
+          '<span style="background:#1B4332;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;">ADMIN</span>' : '';
+        const regBadge = u.registered ? 
+          '<span style="color:#27ae60;font-size:11px;">✓ registered</span>' : 
+          '<span style="color:#e74c3c;font-size:11px;">⚠ not registered</span>';
+        const projects = u.current_projects.length > 0 ? 
+          'Currently in: ' + u.current_projects.join(', ') : 
+          'No projects yet';
+        
+        return '<div class="inv-item" onclick="confirmAddUser(\'' + u.user_id + '\', \'' + escapeHtml(u.name).replace(/'/g, "\\'") + '\')" style="cursor:pointer;">' +
+          '<div class="inv-item-info">' +
+            '<div class="inv-item-name">' + escapeHtml(u.name) + roleBadge + '</div>' +
+            '<div class="inv-item-meta">' + u.user_id + ' · ' + regBadge + ' · ' + projects + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+  }
+  
+  function filterAddUserList() {
+    const q = document.getElementById('addUserSearch').value.toLowerCase().trim();
+    const filtered = q ? addableUsersList.filter(u => 
+      String(u.name).toLowerCase().includes(q) || 
+      String(u.user_id).toLowerCase().includes(q)
+    ) : addableUsersList;
+    renderAddUserList(filtered);
+  }
+  
+  async function confirmAddUser(targetUserId, targetName) {
+    if (!confirm('Add ' + targetName + ' to ' + (currentProjectName || currentProjectId) + '?')) return;
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'addUserToProject',
+          userId: targetUserId,
+          projectId: currentProjectId || 'ADF',
+          telegramId: userId,
+          userName: userFullName
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✓ ' + d.message);
+        setTimeout(() => {
+          showScreen('manageTeam');
+          loadTeamUsers();
+        }, 1200);
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) { 
+      showToast('Failed to add user'); 
+    }
   }
   
   function showToast(msg) {
