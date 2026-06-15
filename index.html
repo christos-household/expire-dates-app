@@ -1940,6 +1940,11 @@
     
     const wasOpen = pendingMoveItem.itemType === 'open';
     const qty = pendingMoveItem.itemType === 'inventory' ? pendingMoveQty : null;
+    const productName = pendingMoveItem.productName;
+    
+    // Close modal IMMEDIATELY for instant feedback
+    closeMoveModal();
+    showToast('⏳ Moving ' + productName + '...');
     
     try {
       const r = await fetch(API_URL, {
@@ -1958,7 +1963,6 @@
       
       if (d.success) {
         showToast('✓ ' + d.message);
-        closeMoveModal();
         setTimeout(() => {
           if (wasOpen) {
             loadOpenedItems();
@@ -1967,10 +1971,10 @@
           }
         }, 600);
       } else {
-        showToast('Error: ' + (d.error || 'unknown'));
+        showToast('❌ Failed: ' + (d.error || 'unknown error'));
       }
     } catch (e) {
-      showToast('Failed to move item');
+      showToast('❌ Network error — move failed');
     }
   }
   function escapeHtml(str) {
