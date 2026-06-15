@@ -137,6 +137,27 @@
       background: none; border: none; color: #e74c3c;
       font-size: 20px; cursor: pointer; padding: 0 8px;
     }
+    .btn-move-icon {
+      background: #fff;
+      border: 1px solid #D4A24C;
+      color: #1B4332;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-left: 8px;
+      flex-shrink: 0;
+      transition: all 0.15s;
+      padding: 0;
+    }
+    .btn-move-icon:hover {
+      background: #D4A24C;
+      color: #fff;
+    }
+    .btn-move-icon:active {
+      transform: scale(0.95);
+    }
     .inv-item {
       padding: 14px 16px;
       border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
@@ -619,6 +640,28 @@
     <button class="btn-confirm-transfer" id="confirmTransferBtn" onclick="confirmTransfer()">Confirm</button>
   </div>
 </div>
+<!-- Move Item Modal -->
+  <div id="moveItemModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📍 Move Item</h3>
+        <button class="modal-close" onclick="closeMoveModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="moveItemInfo" style="background:#f5f1e8;padding:12px;border-radius:8px;margin-bottom:16px;font-size:14px;"></div>
+        
+        <label style="display:block;font-size:13px;font-weight:600;color:#1B4332;margin-bottom:8px;">Select destination pantry:</label>
+        <select id="moveDestination" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;font-size:14px;background:#fff;">
+          <option value="">— Choose pantry —</option>
+        </select>
+        
+        <div style="display:flex;gap:8px;margin-top:20px;">
+          <button class="btn" style="flex:1;background:#eee;color:#333;" onclick="closeMoveModal()">Cancel</button>
+          <button class="btn btn-admin" style="flex:1;" onclick="submitMove()">Confirm Move</button>
+        </div>
+      </div>
+    </div>
+  </div>
   
 <div class="toast" id="toast"></div>
 
@@ -993,6 +1036,10 @@
         ? 'onclick="toggleItemSelection(\'' + i.item_id + '\')"'
         : '';
       
+      const moveBtn = !inSelectionMode 
+        ? '<button class="btn-move-icon" onclick="event.stopPropagation(); openMoveModal(\'' + i.item_id + '\', \'inventory\', \'' + escapeHtml(i.product_name).replace(/'/g, "\\'") + '\', \'' + i.location_id + '\', \'' + escapeHtml(i.location_name).replace(/'/g, "\\'") + '\')" title="Move to another pantry">📍</button>'
+        : '';
+      
       return '<div class="' + itemClass + '" ' + onClickAttr + '>' +
         checkboxHtml +
         '<div class="inv-item-info">' +
@@ -1000,6 +1047,7 @@
           '<div class="inv-item-meta">' + i.quantity + ' ' + (i.unit || '') + ' · ' + escapeHtml(i.location_name) + '</div>' +
           '<div class="inv-item-expiry ' + expiryClass(i.days_to_expiry) + '">' + expiryLabel(i) + '</div>' +
         '</div>' +
+        moveBtn +
       '</div>';
     }).join('') || '<div class="empty-state">No items</div>';
   }
@@ -1095,7 +1143,10 @@
           '<div class="inv-item-meta">' + escapeHtml(i.location_name) + ' · opened by ' + escapeHtml(i.opened_by || '') + '</div>' +
           '<div class="inv-item-expiry ' + openedExpiryClass(i.days_to_expiry) + '">' + openedExpiryLabel(i) + '</div>' +
         '</div>' +
-        '<button class="btn btn-consume btn-small" onclick="removeOpenedItem(\'' + i.item_id + '\')">Consumed</button>' +
+        '<div style="display:flex;gap:6px;align-items:center;">' +
+          '<button class="btn-move-icon" onclick="openMoveModal(\'' + i.item_id + '\', \'open\', \'' + escapeHtml(i.product_name).replace(/'/g, "\\'") + '\', \'' + i.location_id + '\', \'' + escapeHtml(i.location_name).replace(/'/g, "\\'") + '\')" title="Move to another pantry">📍</button>' +
+          '<button class="btn btn-consume btn-small" onclick="removeOpenedItem(\'' + i.item_id + '\')">Consumed</button>' +
+        '</div>' +
       '</div>'
     ).join('') || '<div class="empty-state">No opened items yet. Tap "+ Mark Item as Opened" above.</div>';
   }
@@ -1722,6 +1773,84 @@
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2000);
+  }
+// ============== MOVE ITEM BETWEEN PANTRIES ==============
+  
+  let pendingMoveItem = null;
+  
+  function openMoveModal(itemId, itemType, productName, currentLocationId, currentLocationName) {
+    pendingMoveItem = {
+      itemId: itemId,
+      itemType: itemType,
+      productName: productName,
+      currentLocationId: currentLocationId
+    };
+    
+    document.getElementById('moveItemInfo').innerHTML = 
+      '<strong>' + escapeHtml(productName) + '</strong><br>' +
+      '<span style="color:#666;font-size:12px;">Currently at: ' + escapeHtml(currentLocationName || currentLocationId) + '</span>';
+    
+    const dropdown = document.getElementById('moveDestination');
+    dropdown.innerHTML = '<option value="">— Choose pantry —</option>';
+    
+    const projectLocations = (allLocations || []).filter(loc => 
+      String(loc.project_id) === String(currentProjectId || 'ADF') &&
+      String(loc.location_id) !== String(currentLocationId)
+    );
+    
+    projectLocations.forEach(loc => {
+      const opt = document.createElement('option');
+      opt.value = loc.location_id;
+      opt.textContent = loc.name + ' (' + loc.location_id + ')';
+      dropdown.appendChild(opt);
+    });
+    
+    document.getElementById('moveItemModal').style.display = 'flex';
+  }
+  
+  function closeMoveModal() {
+    document.getElementById('moveItemModal').style.display = 'none';
+    pendingMoveItem = null;
+  }
+  
+  async function submitMove() {
+    if (!pendingMoveItem) return;
+    const dest = document.getElementById('moveDestination').value;
+    if (!dest) return showToast('Please select a destination');
+    if (dest === pendingMoveItem.currentLocationId) return showToast('Already in that pantry');
+    
+    const wasOpen = pendingMoveItem.itemType === 'open';
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'moveItemLocation',
+          itemId: pendingMoveItem.itemId,
+          newLocationId: dest,
+          itemType: pendingMoveItem.itemType,
+          userName: userFullName,
+          projectId: currentProjectId || 'ADF'
+        })
+      });
+      const d = await r.json();
+      
+      if (d.success) {
+        showToast('✓ ' + d.message);
+        closeMoveModal();
+        setTimeout(() => {
+          if (wasOpen) {
+            loadOpenedItems();
+          } else {
+            loadInventory();
+          }
+        }, 600);
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) {
+      showToast('Failed to move item');
+    }
   }
   
   function escapeHtml(str) {
