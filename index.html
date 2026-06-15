@@ -6,6 +6,59 @@
   <title>Expire Dates System</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
+    /* Move Modal styles */
+    .modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-content {
+      background: #fff;
+      border-radius: 16px;
+      max-width: 480px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .modal-header h3 {
+      margin: 0;
+      color: #1B4332;
+      font-size: 18px;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: #888;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .modal-close:hover {
+      background: #f0f0f0;
+      color: #333;
+    }
+    .modal-body {
+      padding: 20px;
+    }
+    #moveItemInfo {
+      color: #1B2B26 !important;
+    }
+    #moveItemInfo strong {
+      color: #1B4332 !important;
+    }
     * { box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -1778,7 +1831,7 @@
   
   let pendingMoveItem = null;
   
-  function openMoveModal(itemId, itemType, productName, currentLocationId, currentLocationName) {
+  async function openMoveModal(itemId, itemType, productName, currentLocationId, currentLocationName) {
     pendingMoveItem = {
       itemId: itemId,
       itemType: itemType,
@@ -1791,12 +1844,34 @@
       '<span style="color:#666;font-size:12px;">Currently at: ' + escapeHtml(currentLocationName || currentLocationId) + '</span>';
     
     const dropdown = document.getElementById('moveDestination');
-    dropdown.innerHTML = '<option value="">— Choose pantry —</option>';
+    dropdown.innerHTML = '<option value="">Loading pantries...</option>';
     
+    document.getElementById('moveItemModal').style.display = 'flex';
+    
+    // Ensure locations are loaded
+    if (!allLocations || allLocations.length === 0) {
+      try {
+        const r = await fetch(API_URL + '?action=getLocations&projectId=' + (currentProjectId || 'ADF'));
+        const d = await r.json();
+        if (d.success) {
+          allLocations = d.locations || [];
+        }
+      } catch (e) {
+        console.error('Failed to load locations', e);
+      }
+    }
+    
+    // Populate destination dropdown
+    dropdown.innerHTML = '<option value="">— Choose pantry —</option>';
     const projectLocations = (allLocations || []).filter(loc => 
       String(loc.project_id) === String(currentProjectId || 'ADF') &&
       String(loc.location_id) !== String(currentLocationId)
     );
+    
+    if (projectLocations.length === 0) {
+      dropdown.innerHTML = '<option value="">No other pantries available</option>';
+      return;
+    }
     
     projectLocations.forEach(loc => {
       const opt = document.createElement('option');
@@ -1804,8 +1879,6 @@
       opt.textContent = loc.name + ' (' + loc.location_id + ')';
       dropdown.appendChild(opt);
     });
-    
-    document.getElementById('moveItemModal').style.display = 'flex';
   }
   
   function closeMoveModal() {
