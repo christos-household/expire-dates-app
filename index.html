@@ -1927,7 +1927,52 @@
     }
     document.getElementById('moveQtyDisplay').textContent = pendingMoveQty;
   }
+  function closeMoveModal() {
+    document.getElementById('moveItemModal').style.display = 'none';
+    pendingMoveItem = null;
+  }
   
+  async function submitMove() {
+    if (!pendingMoveItem) return;
+    const dest = document.getElementById('moveDestination').value;
+    if (!dest) return showToast('Please select a destination');
+    if (dest === pendingMoveItem.currentLocationId) return showToast('Already in that pantry');
+    
+    const wasOpen = pendingMoveItem.itemType === 'open';
+    const qty = pendingMoveItem.itemType === 'inventory' ? pendingMoveQty : null;
+    
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'moveItemLocation',
+          itemId: pendingMoveItem.itemId,
+          newLocationId: dest,
+          itemType: pendingMoveItem.itemType,
+          quantityToMove: qty,
+          userName: userFullName,
+          projectId: currentProjectId || 'ADF'
+        })
+      });
+      const d = await r.json();
+      
+      if (d.success) {
+        showToast('✓ ' + d.message);
+        closeMoveModal();
+        setTimeout(() => {
+          if (wasOpen) {
+            loadOpenedItems();
+          } else {
+            loadInventory();
+          }
+        }, 600);
+      } else {
+        showToast('Error: ' + (d.error || 'unknown'));
+      }
+    } catch (e) {
+      showToast('Failed to move item');
+    }
+  }
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
