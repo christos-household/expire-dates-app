@@ -1848,23 +1848,23 @@
     
     document.getElementById('moveItemModal').style.display = 'flex';
     
-    // Ensure locations are loaded
-    if (!allLocations || allLocations.length === 0) {
-      try {
-        const r = await fetch(API_URL + '?action=getLocations&projectId=' + (currentProjectId || 'ADF'));
-        const d = await r.json();
-        if (d.success) {
-          allLocations = d.locations || [];
-        }
-      } catch (e) {
-        console.error('Failed to load locations', e);
-      }
+    // Always reload locations fresh
+    try {
+      const r = await fetch(API_URL + '?action=getLocations&projectId=' + encodeURIComponent(currentProjectId || 'ADF'));
+      const d = await r.json();
+      allLocations = d.locations || [];
+    } catch (e) {
+      console.error('Failed to load locations', e);
+      dropdown.innerHTML = '<option value="">Error loading pantries</option>';
+      return;
     }
+    
+    // DEBUG: alert what we got
+    alert('Loaded ' + (allLocations || []).length + ' locations. First: ' + JSON.stringify((allLocations||[])[0] || 'none'));
     
     // Populate destination dropdown
     dropdown.innerHTML = '<option value="">— Choose pantry —</option>';
     const projectLocations = (allLocations || []).filter(loc => 
-      String(loc.project_id) === String(currentProjectId || 'ADF') &&
       String(loc.location_id) !== String(currentLocationId)
     );
     
