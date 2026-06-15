@@ -1938,9 +1938,12 @@
     if (!dest) return showToast('Please select a destination');
     if (dest === pendingMoveItem.currentLocationId) return showToast('Already in that pantry');
     
-    const wasOpen = pendingMoveItem.itemType === 'open';
-    const qty = pendingMoveItem.itemType === 'inventory' ? pendingMoveQty : null;
+    // Save all needed data BEFORE closing modal (closeMoveModal nulls pendingMoveItem!)
+    const itemId = pendingMoveItem.itemId;
+    const itemType = pendingMoveItem.itemType;
     const productName = pendingMoveItem.productName;
+    const wasOpen = itemType === 'open';
+    const qty = itemType === 'inventory' ? pendingMoveQty : null;
     
     // Close modal IMMEDIATELY for instant feedback
     closeMoveModal();
@@ -1951,9 +1954,9 @@
         method: 'POST',
         body: JSON.stringify({
           action: 'moveItemLocation',
-          itemId: pendingMoveItem.itemId,
+          itemId: itemId,
           newLocationId: dest,
-          itemType: pendingMoveItem.itemType,
+          itemType: itemType,
           quantityToMove: qty,
           userName: userFullName,
           projectId: currentProjectId || 'ADF'
@@ -1974,7 +1977,6 @@
         showToast('❌ Failed: ' + (d.error || 'unknown error'));
       }
     } catch (e) {
-      alert('Network error details: ' + e.message + '\n\nFull error: ' + e.toString());
       showToast('❌ Network error — move failed');
     }
   }
