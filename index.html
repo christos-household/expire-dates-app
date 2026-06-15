@@ -1974,6 +1974,7 @@
         showToast('❌ Failed: ' + (d.error || 'unknown error'));
       }
     } catch (e) {
+      alert('Network error details: ' + e.message + '\n\nFull error: ' + e.toString());
       showToast('❌ Network error — move failed');
     }
   }
