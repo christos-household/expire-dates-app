@@ -707,6 +707,22 @@
         <select id="moveDestination" style="width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;font-size:14px;background:#fff;">
           <option value="">— Choose pantry —</option>
         </select>
+        <div id="moveQuantitySection" style="margin-top:16px;display:none;">
+          <label style="display:block;font-size:13px;font-weight:600;color:#1B4332;margin-bottom:8px;">Quantity to move:</label>
+          <div style="display:flex;align-items:center;gap:12px;justify-content:center;background:#f5f1e8;padding:12px;border-radius:8px;">
+            <button onclick="adjustMoveQty(-1)" style="width:44px;height:44px;border-radius:8px;border:1px solid #D4A24C;background:#fff;font-size:22px;font-weight:600;color:#1B4332;cursor:pointer;">−</button>
+            <div style="text-align:center;min-width:80px;">
+              <div id="moveQtyDisplay" style="font-size:28px;font-weight:700;color:#1B4332;line-height:1;">1</div>
+              <div id="moveQtyMax" style="font-size:11px;color:#666;margin-top:2px;">of 1 available</div>
+            </div>
+            <button onclick="adjustMoveQty(1)" style="width:44px;height:44px;border-radius:8px;border:1px solid #D4A24C;background:#fff;font-size:22px;font-weight:600;color:#1B4332;cursor:pointer;">+</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button onclick="setMoveQty(1)" style="flex:1;padding:6px;border:1px solid #ddd;background:#fff;border-radius:6px;font-size:12px;cursor:pointer;">1</button>
+            <button onclick="setMoveQty('half')" style="flex:1;padding:6px;border:1px solid #ddd;background:#fff;border-radius:6px;font-size:12px;cursor:pointer;">Half</button>
+            <button onclick="setMoveQty('all')" style="flex:1;padding:6px;border:1px solid #ddd;background:#fff;border-radius:6px;font-size:12px;cursor:pointer;">All</button>
+          </div>
+        </div>
         
         <div style="display:flex;gap:8px;margin-top:20px;">
           <button class="btn" style="flex:1;background:#eee;color:#333;" onclick="closeMoveModal()">Cancel</button>
@@ -1090,7 +1106,7 @@
         : '';
       
       const moveBtn = !inSelectionMode 
-        ? '<button class="btn-move-icon" onclick="event.stopPropagation(); openMoveModal(\'' + i.item_id + '\', \'inventory\', \'' + escapeHtml(i.product_name).replace(/'/g, "\\'") + '\', \'' + i.location_id + '\', \'' + escapeHtml(i.location_name).replace(/'/g, "\\'") + '\')" title="Move to another pantry">📍</button>'
+        ? '<button class="btn-move-icon" onclick="event.stopPropagation(); openMoveModal(\'' + i.item_id + '\', \'inventory\', \'' + escapeHtml(i.product_name).replace(/'/g, "\\'") + '\', \'' + i.location_id + '\', \'' + escapeHtml(i.location_name).replace(/'/g, "\\'") + '\', ' + (i.quantity || 1) + ', \'' + escapeHtml(i.unit || '').replace(/'/g, "\\'") + '\')" title="Move to another pantry">📍</button>'
         : '';
       
       return '<div class="' + itemClass + '" ' + onClickAttr + '>' +
@@ -1830,18 +1846,35 @@
 // ============== MOVE ITEM BETWEEN PANTRIES ==============
   
   let pendingMoveItem = null;
+  let pendingMoveQty = 1;
+  let pendingMoveMaxQty = 1;
+  let pendingMoveUnit = '';
   
-  async function openMoveModal(itemId, itemType, productName, currentLocationId, currentLocationName) {
+  async function openMoveModal(itemId, itemType, productName, currentLocationId, currentLocationName, availableQty, unit) {
     pendingMoveItem = {
       itemId: itemId,
       itemType: itemType,
       productName: productName,
       currentLocationId: currentLocationId
     };
+    pendingMoveMaxQty = Math.max(1, Number(availableQty) || 1);
+    pendingMoveQty = 1;
+    pendingMoveUnit = unit || '';
     
     document.getElementById('moveItemInfo').innerHTML = 
       '<strong>' + escapeHtml(productName) + '</strong><br>' +
-      '<span style="color:#666;font-size:12px;">Currently at: ' + escapeHtml(currentLocationName || currentLocationId) + '</span>';
+      '<span style="color:#666;font-size:12px;">Currently at: ' + escapeHtml(currentLocationName || currentLocationId) + 
+      (availableQty ? ' · ' + availableQty + ' ' + escapeHtml(unit || '') + ' available' : '') + '</span>';
+    
+    // Show/hide quantity section based on type
+    const qtySection = document.getElementById('moveQuantitySection');
+    if (itemType === 'inventory' && pendingMoveMaxQty > 1) {
+      qtySection.style.display = 'block';
+      document.getElementById('moveQtyDisplay').textContent = pendingMoveQty;
+      document.getElementById('moveQtyMax').textContent = 'of ' + pendingMoveMaxQty + ' available';
+    } else {
+      qtySection.style.display = 'none';
+    }
     
     const dropdown = document.getElementById('moveDestination');
     dropdown.innerHTML = '<option value="">Loading pantries...</option>';
@@ -1859,13 +1892,11 @@
       return;
     }
     
-    // DEBUG: alert what we got
-    alert('Loaded ' + (allLocations || []).length + ' locations. First: ' + JSON.stringify((allLocations||[])[0] || 'none'));
-    
     // Populate destination dropdown
     dropdown.innerHTML = '<option value="">— Choose pantry —</option>';
     const projectLocations = (allLocations || []).filter(loc => 
-      String(loc.location_id) !== String(currentLocationId)
+      String(loc.location_id) !== String(currentLocationId) &&
+      loc.active !== false
     );
     
     if (projectLocations.length === 0) {
@@ -1881,49 +1912,20 @@
     });
   }
   
-  function closeMoveModal() {
-    document.getElementById('moveItemModal').style.display = 'none';
-    pendingMoveItem = null;
+  function adjustMoveQty(delta) {
+    pendingMoveQty = Math.max(1, Math.min(pendingMoveMaxQty, pendingMoveQty + delta));
+    document.getElementById('moveQtyDisplay').textContent = pendingMoveQty;
   }
   
-  async function submitMove() {
-    if (!pendingMoveItem) return;
-    const dest = document.getElementById('moveDestination').value;
-    if (!dest) return showToast('Please select a destination');
-    if (dest === pendingMoveItem.currentLocationId) return showToast('Already in that pantry');
-    
-    const wasOpen = pendingMoveItem.itemType === 'open';
-    
-    try {
-      const r = await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'moveItemLocation',
-          itemId: pendingMoveItem.itemId,
-          newLocationId: dest,
-          itemType: pendingMoveItem.itemType,
-          userName: userFullName,
-          projectId: currentProjectId || 'ADF'
-        })
-      });
-      const d = await r.json();
-      
-      if (d.success) {
-        showToast('✓ ' + d.message);
-        closeMoveModal();
-        setTimeout(() => {
-          if (wasOpen) {
-            loadOpenedItems();
-          } else {
-            loadInventory();
-          }
-        }, 600);
-      } else {
-        showToast('Error: ' + (d.error || 'unknown'));
-      }
-    } catch (e) {
-      showToast('Failed to move item');
+  function setMoveQty(value) {
+    if (value === 'all') {
+      pendingMoveQty = pendingMoveMaxQty;
+    } else if (value === 'half') {
+      pendingMoveQty = Math.max(1, Math.floor(pendingMoveMaxQty / 2));
+    } else {
+      pendingMoveQty = Math.max(1, Math.min(pendingMoveMaxQty, Number(value) || 1));
     }
+    document.getElementById('moveQtyDisplay').textContent = pendingMoveQty;
   }
   
   function escapeHtml(str) {
