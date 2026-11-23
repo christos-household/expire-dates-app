@@ -1141,9 +1141,9 @@
       '</div>'
     ).join('') || '<div class="empty-state">No items</div>';
   }
-async function undoLastAction() {
-    if (!confirm('Να αναιρεθεί η τελευταία σου ενέργεια;')) return;
-    showToast('Αναίρεση...');
+  async function undoLastAction() {
+    if (!confirm('Undo your last action?')) return;
+    showToast('Undoing...');
     try {
       const r = await fetch(API_URL, {
         method: 'POST',
@@ -1154,14 +1154,14 @@ async function undoLastAction() {
         })
       });
       const d = await r.json();
-      if (d.success) {
-        showToast('✓ ' + (d.message || 'Αναιρέθηκε'));
+            if (d.success) {
+        showToast('✓ ' + (d.message || 'Undone'));
         allInventory = [];
       } else {
-        showToast(d.error || 'Δεν έγινε αναίρεση');
+        showToast(d.error || 'Undo failed');
       }
     } catch (e) {
-      showToast('Σφάλμα σύνδεσης');
+      showToast('Connection error');
     }
   }
   
