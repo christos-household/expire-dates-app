@@ -411,12 +411,14 @@
     <button class="btn btn-secondary" onclick="showScreen('stocktake')">📝 Stocktake</button>
     <button class="btn btn-secondary" onclick="showScreen('openedItems')">🍯 Open Items</button>
     <button class="btn btn-secondary" onclick="showScreen('products')">📋 View Products</button>
-    <div id="adminSection" style="display: none;">
+       <div id="adminSection" style="display: none;">
       <div class="section-title">Admin</div>
       <button class="btn btn-admin" onclick="showScreen('addProduct')">➕ Add New Product</button>
       <button class="btn btn-admin" onclick="showScreen('addLocation')">📍 Add New Location</button>
       <button class="btn btn-admin" onclick="showScreen('manageTeam')">👥 Manage Team</button>
     </div>
+    <div class="section-title">Corrections</div>
+    <button class="btn btn-secondary" onclick="undoLastAction()">↩️ Undo my last action</button>
   </div>
 </div>
 
@@ -1138,6 +1140,29 @@
         '</div>' +
       '</div>'
     ).join('') || '<div class="empty-state">No items</div>';
+  }
+async function undoLastAction() {
+    if (!confirm('Να αναιρεθεί η τελευταία σου ενέργεια;')) return;
+    showToast('Αναίρεση...');
+    try {
+      const r = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'undoLastAction',
+          telegramId: userId,
+          projectId: currentProjectId || 'ADF'
+        })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast('✓ ' + (d.message || 'Αναιρέθηκε'));
+        allInventory = [];
+      } else {
+        showToast(d.error || 'Δεν έγινε αναίρεση');
+      }
+    } catch (e) {
+      showToast('Σφάλμα σύνδεσης');
+    }
   }
   
   async function markAsConsumed(itemId) {
