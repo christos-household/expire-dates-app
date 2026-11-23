@@ -522,8 +522,16 @@
     <button class="back-btn" onclick="showScreen('home')">← Back</button>
     <h1>🍯 Open Items</h1>
   </div>
-  <div class="form-container">
+    <div class="form-container">
     <button class="btn" onclick="showScreen('pickToOpen')">+ Mark Item as Opened</button>
+  </div>
+  <div class="filter-bar">
+    <select class="form-select" id="openedLocationFilter" onchange="renderOpenedItems()">
+      <option value="">All pantries</option>
+    </select>
+  </div>
+  <div style="padding: 0 16px 8px;">
+    <input type="text" class="search-box" id="openedSearch" placeholder="Search product..." oninput="renderOpenedItems()">
   </div>
   <div class="count-info" id="openedItemsCount">Loading...</div>
   <div id="openedItemsList"></div>
@@ -899,7 +907,9 @@
       else populateLocationFilter('stocktakeLocationFilter');
       loadInventoryAndRender('stocktake');
     }
-    if (name === 'openedItems') {
+           if (name === 'openedItems') {
+      if (allLocations.length === 0) loadLocations().then(() => { populateLocationFilter('openedLocationFilter'); fixOpenedFilterLabel(); });
+      else { populateLocationFilter('openedLocationFilter'); fixOpenedFilterLabel(); }
       loadOpenedItems();
     }
     if (name === 'manageTeam') {
@@ -951,6 +961,11 @@
     if (!sel) return;
     sel.innerHTML = '<option value="">All locations</option>' +
       allLocations.map(l => '<option value="' + l.location_id + '">' + escapeHtml(l.name) + '</option>').join('');
+  }
+  
+    function fixOpenedFilterLabel() {
+    const sel = document.getElementById('openedLocationFilter');
+    if (sel && sel.options.length > 0) sel.options[0].textContent = 'All pantries';
   }
   
   async function loadInventoryAndRender(screen) {
@@ -1228,9 +1243,15 @@
     } catch (e) { showToast('Failed to update'); }
   }
   
-  function renderOpenedItems() {
-    document.getElementById('openedItemsCount').textContent = allOpenedItems.length + ' opened items';
-    document.getElementById('openedItemsList').innerHTML = allOpenedItems.map(i => 
+    function renderOpenedItems() {
+    const locFilter = (document.getElementById('openedLocationFilter') || {}).value || '';
+    const searchTerm = ((document.getElementById('openedSearch') || {}).value || '').toLowerCase().trim();
+    const filtered = allOpenedItems.filter(i =>
+      (!locFilter || String(i.location_id) === String(locFilter)) &&
+      (!searchTerm || String(i.product_name || '').toLowerCase().includes(searchTerm))
+    );
+    document.getElementById('openedItemsCount').textContent = filtered.length + ' of ' + allOpenedItems.length + ' opened items';
+    document.getElementById('openedItemsList').innerHTML = filtered.map(i => 
       '<div class="inv-item">' +
         '<div class="inv-item-info">' +
           '<div class="inv-item-name">' + escapeHtml(i.product_name) + '</div>' +
